@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>スポット2 ミッション「きんりんこの あさぎり」</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#000;
+    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
+
+  #camera { position:fixed; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; display:none; }
+  #lakeArt { position:fixed; top:0; left:0; width:100%; height:100%; z-index:2; display:none; }
+  #fogCanvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:3; touch-action:none; display:none; }
+
+  #ui {
+    position:fixed; top:0; left:0; width:100%; z-index:10;
+    padding: 16px 18px; padding-top: max(16px, env(safe-area-inset-top));
+    background: linear-gradient(rgba(0,0,0,0.65), transparent);
+    color:#fff; pointer-events:none; display:none;
+  }
+  #ui h1 { font-size:18px; font-weight:700; }
+  #ui p { font-size:13px; opacity:0.9; margin-top:4px; }
+
+  #hint {
+    position:fixed; bottom:0; left:0; width:100%; z-index:10;
+    padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    color:#fff; text-align:center; pointer-events:none; display:none;
+  }
+  #hint .badge {
+    display:inline-block; background: rgba(255,255,255,0.2);
+    border:2px solid rgba(255,255,255,0.45); border-radius:24px;
+    padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
+  }
+
+  #progressBarWrap {
+    position:fixed; top:78px; left:50%; transform:translateX(-50%);
+    width:70%; max-width:300px; height:14px; border-radius:8px;
+    background:rgba(255,255,255,0.25); z-index:10; display:none; overflow:hidden;
+    border:2px solid rgba(255,255,255,0.5);
+  }
+  #progressBarFill { height:100%; width:0%; background:#8fd4ff; transition: width 0.1s linear; }
+
+  #startScreen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background: linear-gradient(160deg, #7fb8d9, #3f7fa8);
+    z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  #startScreen .num { background:#fff; color:#3f7fa8; font-weight:800; font-size:15px; border-radius:20px; padding:5px 18px; margin-bottom:14px; }
+  #startScreen .icon { font-size:64px; margin-bottom:14px; }
+  #startScreen h2 { font-size:24px; margin-bottom:12px; font-weight:800; }
+  #startScreen p { font-size:15px; opacity:0.95; line-height:1.85; max-width:310px; margin-bottom:28px; }
+  #startBtn { background:#fff; color:#3f7fa8; border:none; border-radius:32px; padding:18px 44px; font-size:18px; font-weight:800; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+  #errBox { display:none; margin-top:18px; font-size:13px; color:#fff; background:rgba(0,0,0,0.25); padding:12px 16px; border-radius:14px; max-width:290px; line-height:1.7; }
+  #loadingBox { display:none; margin-top:16px; font-size:14px; }
+
+  #choices {
+    position:fixed; bottom:0; left:0; width:100%; z-index:12;
+    padding: 18px; padding-bottom: max(24px, env(safe-area-inset-bottom));
+    display:none; gap:12px; flex-direction:column;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75) 30%);
+  }
+  #choices.show { display:flex; }
+  .choiceBtn { background:#fff; color:#1c3a4a; border:3px solid #fff; border-radius:20px; padding:16px; font-size:18px; font-weight:800; box-shadow:0 4px 14px rgba(0,0,0,0.25); }
+  .choiceBtn.wrong { background:#ffe3e3; border-color:#ff8a8a; }
+  .choiceBtn.correct { background:#d6f5e0; border-color:#3fbf7f; }
+
+  #questionBox {
+    position:fixed; top:110px; left:50%; transform:translateX(-50%);
+    z-index:11; width:90%; max-width:380px; display:none;
+    background:rgba(255,255,255,0.95); color:#1c3a4a; border-radius:18px;
+    padding:16px 18px; text-align:center; font-weight:700; font-size:16px;
+    line-height:1.6; box-shadow:0 6px 20px rgba(0,0,0,0.3);
+  }
+
+  #clearScreen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:50;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  #clearScreen.show { display:flex; animation: fadeIn 0.5s ease; }
+  #clearScreen .stamp { width:140px; height:140px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:64px; margin-bottom:22px; animation: pop 0.5s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+  #clearScreen h2 { font-size:26px; margin-bottom:10px; font-weight:800; }
+  #clearScreen p { font-size:15px; opacity:0.95; max-width:290px; line-height:1.9; }
+  @keyframes pop { 0%{transform:scale(0);} 80%{transform:scale(1.15);} 100%{transform:scale(1);} }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <div class="num">スポット 2 / 9</div>
+  <div class="icon">♨️</div>
+  <h2>きんりんこの あさぎり</h2>
+  <p>しゃしんを とって、がめんを ゆびで こすると<br>朝霧(あさぎり)が はれるよ!</p>
+  <button id="startBtn">しゃしんを とる</button>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
+  <div id="errBox"></div>
+  <div id="loadingBox">よみこみちゅう…</div>
+</div>
+
+<img id="camera" alt="とったしゃしん">
+<canvas id="lakeArt"></canvas>
+<canvas id="fogCanvas"></canvas>
+
+<div id="ui">
+  <h1>由布市ARスタンプラリー</h1>
+  <p>スポット2・きんりんこの あさぎり</p>
+</div>
+
+<div id="progressBarWrap"><div id="progressBarFill"></div></div>
+
+<div id="questionBox">
+  きんりんこ(金鱗湖)は、あさに きりが たつことで ゆうめいだよ。<br>
+  なぜ きりが たつのかな?
+</div>
+
+<div id="hint">
+  <div class="badge" id="hintText">がめんを ゆびで こすろう</div>
+</div>
+
+<div id="choices">
+  <button class="choiceBtn" data-val="a">こおりが とけるから</button>
+  <button class="choiceBtn" data-val="b">あたたかい みずが わきでているから</button>
+  <button class="choiceBtn" data-val="c">さかなが たくさん いるから</button>
+</div>
+
+<div id="clearScreen">
+  <div class="stamp">♨️</div>
+  <h2>せいかい!</h2>
+  <p id="clearText"></p>
+</div>
+
+<script>
+const video = document.getElementById('camera');
+const lakeCanvas = document.getElementById('lakeArt');
+const lctx = lakeCanvas.getContext('2d');
+const fogCanvas = document.getElementById('fogCanvas');
+const fctx = fogCanvas.getContext('2d');
+
+const startScreen = document.getElementById('startScreen');
+const startBtn = document.getElementById('startBtn');
+const errBox = document.getElementById('errBox');
+const loadingBox = document.getElementById('loadingBox');
+const fileInput = document.getElementById('fileInput');
+const ui = document.getElementById('ui');
+const hint = document.getElementById('hint');
+const hintText = document.getElementById('hintText');
+const progressBarWrap = document.getElementById('progressBarWrap');
+const progressBarFill = document.getElementById('progressBarFill');
+const questionBox = document.getElementById('questionBox');
+const choicesBox = document.getElementById('choices');
+const clearScreen = document.getElementById('clearScreen');
+const clearText = document.getElementById('clearText');
+
+let W, H;
+let wiped = [];      // こすった座標を蓄積
+let fogCleared = 0;   // 0..1 目安の進み具合
+let phase = 'wiping'; // wiping -> quiz -> done
+let answered = false;
+
+function resize(){
+  W = window.innerWidth; H = window.innerHeight;
+  lakeCanvas.width = W; lakeCanvas.height = H;
+  fogCanvas.width = W; fogCanvas.height = H;
+  drawLakeArt();
+  drawFullFog();
+}
+window.addEventListener('resize', resize);
+
+// 金鱗湖のイラストを描く（シンプルな図形で構成）
+function drawLakeArt(){
+  lctx.clearRect(0,0,W,H);
+  // 空
+  const skyGrad = lctx.createLinearGradient(0,0,0,H*0.6);
+  skyGrad.addColorStop(0, '#ffd9a0');
+  skyGrad.addColorStop(1, '#ffeccb');
+  lctx.fillStyle = skyGrad;
+  lctx.fillRect(0,0,W,H*0.6);
+  // 山（由布岳っぽいシルエット）
+  lctx.fillStyle = '#6b7d8f';
+  lctx.beginPath();
+  lctx.moveTo(W*0.1, H*0.45);
+  lctx.lineTo(W*0.35, H*0.22);
+  lctx.lineTo(W*0.42, H*0.28);
+  lctx.lineTo(W*0.55, H*0.18);
+  lctx.lineTo(W*0.75, H*0.45);
+  lctx.closePath();
+  lctx.fill();
+  // 湖
+  lctx.fillStyle = '#3f7fa8';
+  lctx.fillRect(0, H*0.55, W, H*0.45);
+  // 湖面の反射ライン
+  lctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  lctx.lineWidth = 3;
+  for (let i=0;i<6;i++){
+    lctx.beginPath();
+    lctx.moveTo(W*0.1 + i*40, H*0.65 + i*15);
+    lctx.lineTo(W*0.3 + i*40, H*0.65 + i*15);
+    lctx.stroke();
+  }
+}
+
+// 画面全体を霧（もや）で覆う
+function drawFullFog(){
+  fctx.clearRect(0,0,W,H);
+  fctx.fillStyle = 'rgba(255,255,255,0.96)';
+  fctx.fillRect(0,0,W,H);
+  wiped = [];
+  fogCleared = 0;
+}
+
+startBtn.addEventListener('click', ()=>{ fileInput.click(); });
+
+fileInput.addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  loadingBox.style.display = 'block';
+  errBox.style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    video.onload = ()=>{
+      loadingBox.style.display = 'none';
+      startScreen.style.display = 'none';
+      video.style.display = 'block';
+      lakeCanvas.style.display = 'block';
+      fogCanvas.style.display = 'block';
+      ui.style.display = 'block';
+      hint.style.display = 'block';
+      progressBarWrap.style.display = 'block';
+      resize();
+    };
+    video.onerror = showLoadError;
+    video.src = ev.target.result;
+  };
+  reader.onerror = showLoadError;
+  reader.readAsDataURL(file);
+});
+
+function showLoadError(){
+  loadingBox.style.display = 'none';
+  errBox.style.display = 'block';
+  errBox.textContent = 'しゃしんが よみこめなかったよ。もういちど とってみてね。';
+}
+
+let wiping = false;
+function pointerPos(e){ const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
+
+function wipeAt(x, y){
+  if (phase !== 'wiping') return;
+  const r = Math.min(W,H) * 0.09;
+  fctx.save();
+  fctx.globalCompositeOperation = 'destination-out';
+  fctx.beginPath();
+  fctx.arc(x, y, r, 0, Math.PI*2);
+  fctx.fill();
+  fctx.restore();
+
+  fogCleared = Math.min(1, fogCleared + 0.012);
+  progressBarFill.style.width = Math.round(fogCleared*100) + '%';
+  if (fogCleared < 0.3) hintText.textContent = 'がめんを ゆびで こすろう';
+  else if (fogCleared < 0.7) hintText.textContent = 'すこしずつ きりが はれてきた!';
+  else if (fogCleared < 1) hintText.textContent = 'あと すこし!';
+
+  if (fogCleared >= 1 && phase === 'wiping'){
+    phase = 'quiz';
+    hintText.textContent = 'クイズに こたえよう';
+    questionBox.style.display = 'block';
+    setTimeout(()=>{ choicesBox.classList.add('show'); }, 400);
+  }
+}
+
+fogCanvas.addEventListener('touchstart', e=>{ wiping=true; const p=pointerPos(e); wipeAt(p.x,p.y); }, {passive:true});
+fogCanvas.addEventListener('touchmove', e=>{ if(wiping){ const p=pointerPos(e); wipeAt(p.x,p.y);} }, {passive:true});
+fogCanvas.addEventListener('touchend', ()=>{ wiping=false; });
+fogCanvas.addEventListener('mousedown', e=>{ wiping=true; wipeAt(e.clientX,e.clientY); });
+fogCanvas.addEventListener('mousemove', e=>{ if(wiping) wipeAt(e.clientX,e.clientY); });
+window.addEventListener('mouseup', ()=>{ wiping=false; });
+
+choicesBox.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.choiceBtn');
+  if (!btn || answered) return;
+  if (btn.dataset.val === 'b'){
+    answered = true;
+    btn.classList.add('correct');
+    hintText.textContent = 'せいかい!';
+    setTimeout(()=>{
+      phase = 'done';
+      clearText.innerHTML = '金鱗湖(きんりんこ)は、あたたかい 温泉の みずと<br>つめたい 空気が まざりあって、<br>あさに きりが たつんだよ。<br>由布市の ゆうめいな けしきの ひとつだよ。';
+      clearScreen.classList.add('show');
+    }, 700);
+  } else {
+    btn.classList.add('wrong');
+    hintText.textContent = 'ちがうよ、もういちど かんがえてみよう';
+    setTimeout(()=>{ btn.classList.remove('wrong'); }, 700);
+  }
+});
+</script>
+</body>
+</html>
