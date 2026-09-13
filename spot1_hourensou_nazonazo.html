@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>スポット1 なぞなぞ「ほうれんそうばたけ」</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#000;
+    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
+
+  #camera { position:fixed; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; display:none; }
+  #overlay { position:fixed; top:0; left:0; width:100%; height:100%; z-index:2; touch-action:none; display:none; }
+
+  #ui {
+    position:fixed; top:0; left:0; width:100%; z-index:10;
+    padding: 16px 18px; padding-top: max(16px, env(safe-area-inset-top));
+    background: linear-gradient(rgba(0,0,0,0.65), transparent);
+    color:#fff; pointer-events:none; display:none;
+  }
+  #ui h1 { font-size:18px; font-weight:700; }
+  #ui p { font-size:13px; opacity:0.9; margin-top:4px; }
+
+  #questionBox {
+    position:fixed; top:70px; left:50%; transform:translateX(-50%);
+    z-index:11; width:90%; max-width:380px; display:none;
+    background:rgba(255,255,255,0.95); color:#1f3a24; border-radius:18px;
+    padding:16px 18px; text-align:center; font-weight:700; font-size:17px;
+    line-height:1.6; box-shadow:0 6px 20px rgba(0,0,0,0.3);
+  }
+  #pullCount { color:#2e8b47; font-size:20px; }
+
+  #hint {
+    position:fixed; bottom:0; left:0; width:100%; z-index:10;
+    padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    color:#fff; text-align:center; pointer-events:none; display:none;
+  }
+  #hint .badge {
+    display:inline-block; background: rgba(255,255,255,0.18);
+    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
+    padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
+  }
+
+  /* ---- スタート画面 ---- */
+  #startScreen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background: linear-gradient(160deg, #6fbf73, #2e8b47);
+    z-index:100;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  #startScreen .num {
+    background:#fff; color:#2e8b47; font-weight:800; font-size:15px;
+    border-radius:20px; padding:5px 18px; margin-bottom:14px;
+  }
+  #startScreen .icon { font-size:70px; margin-bottom:14px; }
+  #startScreen h2 { font-size:24px; margin-bottom:12px; font-weight:800; }
+  #startScreen p { font-size:15px; opacity:0.95; line-height:1.85; max-width:310px; margin-bottom:28px; }
+  #startBtn {
+    background:#fff; color:#2e8b47; border:none; border-radius:32px;
+    padding:18px 44px; font-size:18px; font-weight:800;
+    box-shadow:0 6px 18px rgba(0,0,0,0.25);
+  }
+  #errBox { display:none; margin-top:18px; font-size:13px; color:#fff; background:rgba(0,0,0,0.25); padding:12px 16px; border-radius:14px; max-width:290px; line-height:1.7; }
+  #loadingBox { display:none; margin-top:16px; font-size:14px; }
+
+  /* ---- 選択肢ボタン ---- */
+  #choices {
+    position:fixed; bottom:0; left:0; width:100%; z-index:12;
+    padding: 18px; padding-bottom: max(24px, env(safe-area-inset-bottom));
+    display:none; gap:12px; flex-direction:column;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75) 30%);
+  }
+  #choices.show { display:flex; }
+  .choiceBtn {
+    background:#fff; color:#1f3a24; border:3px solid #fff; border-radius:20px;
+    padding:16px; font-size:19px; font-weight:800;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+  }
+  .choiceBtn.wrong { background:#ffe3e3; border-color:#ff8a8a; }
+  .choiceBtn.correct { background:#d6f5e0; border-color:#3fbf7f; }
+
+  /* ---- クリア画面 ---- */
+  #clearScreen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:50;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  #clearScreen.show { display:flex; animation: fadeIn 0.5s ease; }
+  #clearScreen .stamp {
+    width:140px; height:140px; border-radius:50%;
+    background:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:64px; margin-bottom:22px;
+    animation: pop 0.5s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  }
+  #clearScreen h2 { font-size:26px; margin-bottom:10px; font-weight:800; }
+  #clearScreen p { font-size:15px; opacity:0.95; max-width:290px; line-height:1.9; }
+  @keyframes pop { 0%{transform:scale(0);} 80%{transform:scale(1.15);} 100%{transform:scale(1);} }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <div class="num">スポット 1 / 9</div>
+  <div class="icon">🥬</div>
+  <h2>ほうれんそうばたけの なぞなぞ</h2>
+  <p>ほうれんそうを 9束(たば) しゅうかくしよう。<br>まず しゃしんを とってね。</p>
+  <button id="startBtn">しゃしんを とる</button>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
+  <div id="errBox"></div>
+  <div id="loadingBox">よみこみちゅう…</div>
+</div>
+
+<img id="camera" alt="とったしゃしん">
+<canvas id="overlay"></canvas>
+
+<div id="ui">
+  <h1>由布市ARスタンプラリー</h1>
+  <p>スポット1・ほうれんそうばたけ</p>
+</div>
+
+<div id="questionBox">
+  ほうれんそうを 9束 しゅうかくしよう。<br>
+  3束 ゆびで ひっぱって ぬいてみよう!<br>
+  <span id="pullCount">ぬいた数：0 / 3</span>
+</div>
+
+<div id="hint">
+  <div class="badge" id="hintText">ほうれんそうを タップして ひっぱろう</div>
+</div>
+
+<div id="choices">
+  <button class="choiceBtn" data-val="6">6つ</button>
+  <button class="choiceBtn" data-val="3">3つ</button>
+  <button class="choiceBtn" data-val="9">9つ</button>
+</div>
+
+<div id="clearScreen">
+  <div class="stamp">🥬</div>
+  <h2>せいかい!</h2>
+  <p id="clearText"></p>
+</div>
+
+<script>
+const video = document.getElementById('camera');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const startScreen = document.getElementById('startScreen');
+const startBtn = document.getElementById('startBtn');
+const errBox = document.getElementById('errBox');
+const loadingBox = document.getElementById('loadingBox');
+const clearScreen = document.getElementById('clearScreen');
+const clearText = document.getElementById('clearText');
+const hintText = document.getElementById('hintText');
+const fileInput = document.getElementById('fileInput');
+const ui = document.getElementById('ui');
+const hint = document.getElementById('hint');
+const questionBox = document.getElementById('questionBox');
+const pullCountEl = document.getElementById('pullCount');
+const choicesBox = document.getElementById('choices');
+
+let W, H;
+let plants = [];       // {x,y,r,pulled}
+let pulledCount = 0;
+const PULL_TARGET = 3;
+let phase = 'pulling';  // pulling -> quiz -> done
+let answered = false;
+
+function resize(){
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+  layoutPlants();
+}
+window.addEventListener('resize', resize);
+
+function layoutPlants(){
+  // 3列×3行で畑エリアに配置（画面下寄り）
+  plants = [];
+  const cols = 3, rows = 3;
+  const areaTop = H * 0.32;
+  const areaBottom = H * 0.86;
+  const areaLeft = W * 0.15;
+  const areaRight = W * 0.85;
+  const cw = (areaRight - areaLeft) / cols;
+  const rh = (areaBottom - areaTop) / rows;
+  const r = Math.min(cw, rh) * 0.32;
+  for (let row=0; row<rows; row++){
+    for (let col=0; col<cols; col++){
+      const jitterX = (Math.random()-0.5) * cw * 0.25;
+      const jitterY = (Math.random()-0.5) * rh * 0.25;
+      plants.push({
+        x: areaLeft + cw*col + cw/2 + jitterX,
+        y: areaTop + rh*row + rh/2 + jitterY,
+        r: r,
+        pulled: false
+      });
+    }
+  }
+}
+
+startBtn.addEventListener('click', ()=>{ fileInput.click(); });
+
+fileInput.addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  loadingBox.style.display = 'block';
+  errBox.style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    video.onload = ()=>{
+      loadingBox.style.display = 'none';
+      startScreen.style.display = 'none';
+      video.style.display = 'block';
+      canvas.style.display = 'block';
+      ui.style.display = 'block';
+      hint.style.display = 'block';
+      questionBox.style.display = 'block';
+      resize();
+      requestAnimationFrame(loop);
+    };
+    video.onerror = showLoadError;
+    video.src = ev.target.result;
+  };
+  reader.onerror = showLoadError;
+  reader.readAsDataURL(file);
+});
+
+function showLoadError(){
+  loadingBox.style.display = 'none';
+  errBox.style.display = 'block';
+  errBox.textContent = 'しゃしんが よみこめなかったよ。もういちど とってみてね。';
+}
+
+function pointerPos(e){ const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
+
+function handleTap(x, y){
+  if (phase !== 'pulling') return;
+  for (const p of plants){
+    if (p.pulled) continue;
+    const dist = Math.hypot(x-p.x, y-p.y);
+    if (dist < p.r * 1.6){
+      p.pulled = true;
+      pulledCount++;
+      pullCountEl.textContent = `ぬいた数：${pulledCount} / ${PULL_TARGET}`;
+      if (pulledCount >= PULL_TARGET){
+        phase = 'quiz';
+        hintText.textContent = 'ぬいたあと(あな)は いくつ かな？';
+        setTimeout(()=>{ choicesBox.classList.add('show'); }, 500);
+      } else {
+        hintText.textContent = 'あと ' + (PULL_TARGET - pulledCount) + '束 ひっぱろう';
+      }
+      return;
+    }
+  }
+}
+
+canvas.addEventListener('touchstart', e=>{ const p=pointerPos(e); handleTap(p.x,p.y); }, {passive:true});
+canvas.addEventListener('mousedown', e=>{ handleTap(e.clientX,e.clientY); });
+
+choicesBox.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.choiceBtn');
+  if (!btn || answered) return;
+  const val = parseInt(btn.dataset.val, 10);
+  if (val === 3){
+    answered = true;
+    btn.classList.add('correct');
+    hintText.textContent = 'せいかい!';
+    setTimeout(()=>{
+      phase = 'done';
+      clearText.innerHTML = 'ぬいた"あと"（あな）は<br>ちゃんと <b>3つ</b> のこってるね!<br>由布市の 湯布院地域は すずしい きこうを いかして、<br>ほうれんそうの さいばいが さかんなんだよ。';
+      clearScreen.classList.add('show');
+    }, 700);
+  } else {
+    btn.classList.add('wrong');
+    hintText.textContent = 'ちがうよ、もういちど かんがえてみよう';
+    setTimeout(()=>{ btn.classList.remove('wrong'); }, 700);
+  }
+});
+
+function drawPlant(p){
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  if (p.pulled){
+    // 抜いた跡（穴）
+    ctx.fillStyle = 'rgba(40,26,14,0.8)';
+    ctx.beginPath();
+    ctx.ellipse(0, p.r*0.3, p.r*0.9, p.r*0.45, 0, 0, Math.PI*2);
+    ctx.fill();
+  } else {
+    ctx.font = `${p.r*2.1}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowBlur = 10;
+    ctx.fillText('🥬', 0, 0);
+  }
+  ctx.restore();
+}
+
+function drawGuideRing(p){
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.r*1.6, 0, Math.PI*2);
+  ctx.strokeStyle = `rgba(120,255,150,${0.5 + 0.3*Math.sin(Date.now()/300)})`;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8,8]);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function loop(){
+  ctx.clearRect(0,0,W,H);
+  for (const p of plants){
+    if (!p.pulled && phase === 'pulling') drawGuideRing(p);
+    drawPlant(p);
+  }
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
