@@ -77,9 +77,9 @@
 
 <div id="startScreen">
   <div class="num">スポット 4 / 9</div>
-  <div class="icon">🔺</div>
-  <h2>さんかくを よめ</h2>
-  <p>まる・しかく・さんかくの なかに もじが あるよ。<br><b>さんかくだけ</b> タップして、じゅんばんに よもう!</p>
+  <div class="icon">⛰️</div>
+  <h2>かんさつクイズ</h2>
+  <p>ゆふ岳(ゆふだけ)と おなじ かたちを した<br>ずけいが 3つ、かくれているよ。<br>みつけて、なかの もじを よんでみよう!</p>
   <button id="startBtn">しゃしんを とる</button>
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
   <div id="errBox"></div>
@@ -101,7 +101,7 @@
 </div>
 
 <div id="hint">
-  <div class="badge" id="hintText">さんかくの もじだけ タップしよう</div>
+  <div class="badge" id="hintText">ゆふ岳と おなじ かたちを さがそう</div>
 </div>
 
 <div id="clearScreen">
@@ -244,13 +244,13 @@ function handleTap(x, y){
           }, 700);
         }
       } else if (s.type === 'triangle' && !s.isTarget){
-        // 三角だけどダミー：軽く反応
+        // 形は合っているがダミー：形自体は合っていることを伝える
         s.flash = 20;
-        hintText.textContent = 'この さんかくは ちがうみたい…';
+        hintText.textContent = 'かたちは あってるかも。ほかも さがしてみよう';
       } else {
-        // 丸・四角は対象外
+        // 形が違う場合はヒントを与えすぎない
         s.flash = 12;
-        hintText.textContent = 'さんかく だけを さがそう';
+        hintText.textContent = 'その かたちじゃ なさそう…ゆふ岳を おもいだして';
       }
       return;
     }
