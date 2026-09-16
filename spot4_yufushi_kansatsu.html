@@ -8,10 +8,10 @@
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
   html, body { width:100%; height:100%; overflow:hidden; background:#000;
     font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
-
+ 
   #camera { position:fixed; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; display:none; }
   #overlay { position:fixed; top:0; left:0; width:100%; height:100%; z-index:2; touch-action:none; display:none; }
-
+ 
   #ui {
     position:fixed; top:0; left:0; width:100%; z-index:10;
     padding: 14px 18px; padding-top: max(14px, env(safe-area-inset-top));
@@ -20,7 +20,7 @@
   }
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.9; margin-top:2px; }
-
+ 
   #answerBox {
     position:fixed; top:66px; left:50%; transform:translateX(-50%);
     z-index:11; display:none; gap:10px;
@@ -31,7 +31,7 @@
     color:#7a4a10; box-shadow:0 3px 10px rgba(0,0,0,0.3);
   }
   #answerBox .slot.filled { background:#ffe08a; }
-
+ 
   #hint {
     position:fixed; bottom:0; left:0; width:100%; z-index:10;
     padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
@@ -43,7 +43,7 @@
     border:2px solid rgba(255,255,255,0.45); border-radius:24px;
     padding:10px 22px; font-size:15px; font-weight:600; backdrop-filter: blur(6px);
   }
-
+ 
   #startScreen {
     position:fixed; top:0; left:0; width:100%; height:100%;
     background: linear-gradient(160deg, #ffb84a, #d9822a);
@@ -58,7 +58,7 @@
   #startBtn { background:#fff; color:#d9822a; border:none; border-radius:32px; padding:18px 44px; font-size:18px; font-weight:800; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
   #errBox { display:none; margin-top:18px; font-size:13px; color:#fff; background:rgba(0,0,0,0.25); padding:12px 16px; border-radius:14px; max-width:290px; line-height:1.7; }
   #loadingBox { display:none; margin-top:16px; font-size:14px; }
-
+ 
   #clearScreen {
     position:fixed; top:0; left:0; width:100%; height:100%;
     background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:50;
@@ -74,42 +74,42 @@
 </style>
 </head>
 <body>
-
+ 
 <div id="startScreen">
   <div class="num">スポット 4 / 9</div>
   <div class="icon">⛰️</div>
   <h2>かんさつクイズ</h2>
-  <p>ゆふ岳(ゆふだけ)と おなじ かたちを した<br>ずけいが 3つ、かくれているよ。<br>みつけて、なかの もじを よんでみよう!</p>
+  <p>由布岳(ゆふだけ)と おなじ かたちを した<br>ずけいが 3つ、かくれているよ。<br>みつけて、なかの もじを よんでみよう!</p>
   <button id="startBtn">しゃしんを とる</button>
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
   <div id="errBox"></div>
   <div id="loadingBox">よみこみちゅう…</div>
 </div>
-
+ 
 <img id="camera" alt="とったしゃしん">
 <canvas id="overlay"></canvas>
-
+ 
 <div id="ui">
   <h1>由布市ARスタンプラリー</h1>
   <p>スポット4・かんさつ</p>
 </div>
-
+ 
 <div id="answerBox">
   <div class="slot" id="slot0"></div>
   <div class="slot" id="slot1"></div>
   <div class="slot" id="slot2"></div>
 </div>
-
+ 
 <div id="hint">
   <div class="badge" id="hintText">ゆふ岳と おなじ かたちを さがそう</div>
 </div>
-
+ 
 <div id="clearScreen">
   <div class="stamp">🏞️</div>
   <h2>「ゆふし」が あらわれた!</h2>
   <p id="clearText"></p>
 </div>
-
+ 
 <script>
 const video = document.getElementById('camera');
 const canvas = document.getElementById('overlay');
@@ -125,76 +125,66 @@ const hintText = document.getElementById('hintText');
 const answerBox = document.getElementById('answerBox');
 const clearScreen = document.getElementById('clearScreen');
 const clearText = document.getElementById('clearText');
-
+ 
 let W, H;
 let shapes = []; // {type, x, y, size, char, isTarget, targetIndex, collected}
 let collectedCount = 0;
 let cleared = false;
-
-const TARGET_WORD = ['ゆ','ふ','し'];
-const DECOY_CHARS = ['か','ま','た','こ','ら','ぬ','せ','み','わ','え','ろ','ひ'];
-
+ 
 function resize(){
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = W; canvas.height = H;
   layoutShapes();
 }
 window.addEventListener('resize', resize);
-
+ 
 function layoutShapes(){
   shapes = [];
-  const types = ['triangle','circle','square'];
-  const size = Math.min(W,H) * 0.075;
-  const margin = size * 1.8;
-  const top = H*0.24, bottom = H*0.82;
-  const left = W*0.12, right = W*0.88;
-
-  // グリッド状の候補位置を作り、そこにランダムでずらして配置（重なり防止）
-  const cols = 4, rows = 4;
-  const cellW = (right-left)/cols, cellH = (bottom-top)/rows;
-  const positions = [];
-  for (let r=0;r<rows;r++){
-    for (let c=0;c<cols;c++){
-      positions.push({
-        x: left + cellW*c + cellW/2 + (Math.random()-0.5)*cellW*0.4,
-        y: top + cellH*r + cellH/2 + (Math.random()-0.5)*cellH*0.4
-      });
-    }
-  }
-  // シャッフル
-  for (let i=positions.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [positions[i],positions[j]] = [positions[j],positions[i]];
-  }
-
-  // 12マス使用：正解の三角3つ＋残り9マスはランダムな図形
-  const usedPositions = positions.slice(0, 12);
-
-  // 正解の三角（ゆ・ふ・し）を3箇所に配置
-  for (let i=0;i<3;i++){
-    const pos = usedPositions.pop();
+  const size = Math.min(W,H) * 0.085;
+  const left = W*0.08, top = H*0.20, w = W*0.84, h = H*0.62;
+  const px = (x)=> left + w*x;
+  const py = (y)=> top + h*y;
+ 
+  // type: 'mountain' が双耳峰（正解の形）
+  const layout = [
+    { type:'triangle', char:'ま', x:0.08, y:0.14 },
+    { type:'mountain', char:'ふ', x:0.30, y:0.26, isTarget:true, targetIndex:1 }, 
+    { type:'circle',   char:'く', x:0.55, y:0.20 },
+    { type:'square',   char:'は', x:0.42, y:0.42 },
+    { type:'triangle', char:'よ', x:0.66, y:0.44 },
+    { type:'mountain', char:'し', x:0.70, y:0.10, isTarget:true, targetIndex:2 }, 
+    { type:'circle',   char:'ら', x:0.94, y:0.22 },
+    { type:'mountain', char:'ゆ', x:0.82, y:0.34, isTarget:true, targetIndex:0 }, 
+    { type:'circle',   char:'か', x:0.84, y:0.56 },
+    { type:'triangle', char:'め', x:0.92, y:0.72 },
+    { type:'circle',   char:'た', x:0.52, y:0.62 },
+    { type:'square',   char:'こ', x:0.68, y:0.78 },
+    { type:'triangle', char:'る', x:0.26, y:0.82 },
+    { type:'circle',   char:'え', x:0.06, y:0.58 },
+    { type:'square',   char:'き', x:0.14, y:0.80 },
+  ];
+ 
+  layout.forEach(item=>{
     shapes.push({
-      type:'triangle', x:pos.x, y:pos.y, size,
-      char: TARGET_WORD[i], isTarget:true, targetIndex:i, collected:false
+      type: item.type,
+      x: px(item.x), y: py(item.y), size,
+      char: item.char,
+      isTarget: !!item.isTarget,
+      targetIndex: item.targetIndex,
+      collected: false
     });
-  }
-  // 残りはランダムな図形（三角も混ぜるが文字はダミー）
-  usedPositions.forEach(pos=>{
-    const type = types[Math.floor(Math.random()*types.length)];
-    const char = DECOY_CHARS[Math.floor(Math.random()*DECOY_CHARS.length)];
-    shapes.push({ type, x:pos.x, y:pos.y, size, char, isTarget:false, collected:false });
   });
 }
-
+ 
 startBtn.addEventListener('click', ()=>{ fileInput.click(); });
-
+ 
 fileInput.addEventListener('change', (e)=>{
   const file = e.target.files && e.target.files[0];
   if (!file) return;
-
+ 
   loadingBox.style.display = 'block';
   errBox.style.display = 'none';
-
+ 
   const reader = new FileReader();
   reader.onload = (ev)=>{
     video.onload = ()=>{
@@ -214,22 +204,22 @@ fileInput.addEventListener('change', (e)=>{
   reader.onerror = showLoadError;
   reader.readAsDataURL(file);
 });
-
+ 
 function showLoadError(){
   loadingBox.style.display = 'none';
   errBox.style.display = 'block';
   errBox.textContent = 'しゃしんが よみこめなかったよ。もういちど とってみてね。';
 }
-
+ 
 function pointerPos(e){ const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
-
+ 
 function handleTap(x, y){
   if (cleared) return;
   for (const s of shapes){
     if (s.collected) continue;
     const dist = Math.hypot(x-s.x, y-s.y);
     if (dist < s.size * 1.5){
-      if (s.type === 'triangle' && s.isTarget){
+      if (s.type === 'mountain' && s.isTarget){
         s.collected = true;
         collectedCount++;
         const slot = document.getElementById('slot'+s.targetIndex);
@@ -243,36 +233,43 @@ function handleTap(x, y){
             clearScreen.classList.add('show');
           }, 700);
         }
-      } else if (s.type === 'triangle' && !s.isTarget){
-        // 形は合っているがダミー：形自体は合っていることを伝える
-        s.flash = 20;
-        hintText.textContent = 'かたちは あってるかも。ほかも さがしてみよう';
       } else {
-        // 形が違う場合はヒントを与えすぎない
+        // 間違いの形をタップしたとき
         s.flash = 12;
-        hintText.textContent = 'その かたちじゃ なさそう…ゆふ岳を おもいだして';
+        hintText.textContent = 'その かたちじゃ なさそう…ゆふ岳の かたちを おもいだして';
       }
       return;
     }
   }
 }
-
+ 
 canvas.addEventListener('touchstart', e=>{ const p=pointerPos(e); handleTap(p.x,p.y); }, {passive:true});
 canvas.addEventListener('mousedown', e=>{ handleTap(e.clientX,e.clientY); });
-
+ 
 function drawShape(s){
   ctx.save();
   ctx.translate(s.x, s.y);
-
+ 
   let fillColor = 'rgba(255,255,255,0.85)';
   if (s.collected) fillColor = '#ffe08a';
   if (s.flash && s.flash > 0){ fillColor = 'rgba(255,120,120,0.85)'; s.flash--; }
-
+ 
   ctx.fillStyle = fillColor;
   ctx.shadowColor = 'rgba(0,0,0,0.35)';
   ctx.shadowBlur = 8;
-
-  if (s.type === 'triangle'){
+ 
+  if (s.type === 'mountain'){
+    // 双耳峰（由布岳）の形状を描画
+    ctx.beginPath();
+    ctx.moveTo(-s.size * 1.2, s.size * 0.8);  // 左下
+    ctx.lineTo(-s.size * 0.35, -s.size * 0.8); // 左山頂
+    ctx.lineTo(0, -s.size * 0.2);              // 中央の谷
+    ctx.lineTo(s.size * 0.35, -s.size * 0.85); // 右山頂
+    ctx.lineTo(s.size * 1.2, s.size * 0.8);   // 右下
+    ctx.closePath();
+    ctx.fill();
+  } else if (s.type === 'triangle'){
+    // 通常の三角（1点のみ）
     ctx.beginPath();
     ctx.moveTo(0, -s.size);
     ctx.lineTo(s.size*0.9, s.size*0.7);
@@ -286,19 +283,21 @@ function drawShape(s){
   } else {
     ctx.fillRect(-s.size*0.85,-s.size*0.85,s.size*1.7,s.size*1.7);
   }
-
+ 
   if (!s.collected){
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#3a2a10';
-    ctx.font = `bold ${s.size*0.85}px sans-serif`;
+    ctx.font = `bold ${s.size*0.8}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(s.char, 0, s.type==='triangle' ? s.size*0.05 : 0);
+    // 山型図形の場合は文字を少し下寄りに配置
+    const offsetY = s.type === 'mountain' ? s.size * 0.15 : (s.type === 'triangle' ? s.size * 0.05 : 0);
+    ctx.fillText(s.char, 0, offsetY);
   }
-
+ 
   ctx.restore();
 }
-
+ 
 function loop(){
   ctx.clearRect(0,0,W,H);
   for (const s of shapes){
