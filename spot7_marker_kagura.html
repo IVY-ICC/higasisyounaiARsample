@@ -10,10 +10,26 @@
 
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
-  html, body { width:100%; height:100%; overflow:hidden; background:#000;
-    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
+  
+  /* 背景を透明にしてカメラ映像が見えるようにする */
+  html, body { 
+    width:100%; height:100%; overflow:hidden; background: transparent;
+    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; 
+  }
 
+  /* A-Frameシーンとカメラ映像のスタイル調整 */
   a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
+  
+  /* MindARが生成するビデオ要素を確実に画面全体に背面表示 */
+  video {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    z-index: 0 !important;
+  }
 
   #searchHint {
     position:fixed; bottom:0; left:0; width:100%; z-index:20;
@@ -22,8 +38,8 @@
     color:#fff; text-align:center; pointer-events:none;
   }
   #searchHint .badge {
-    display:inline-block; background: rgba(255,255,255,0.18);
-    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
+    display:inline-block; background: rgba(0,0,0,0.5);
+    border:2px solid rgba(255,255,255,0.6); border-radius:24px;
     padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
   }
 
@@ -36,43 +52,42 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
 
-  /* gameLayerはタッチを通過させる(pointer-events: none) */
   #gameLayer {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 100;
-    display: none;
-    pointer-events: none !important;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 100; display: none; pointer-events: none !important;
   }
 
   #clueBox {
-    position:fixed; top:64px; left:50%; transform:translateX(-50%);
+    position:fixed; top:60px; left:50%; transform:translateX(-50%);
     z-index:101; width:92%; max-width:400px; display:none;
     background:rgba(255,255,255,0.95); color:#3a2410; border-radius:16px;
-    padding:14px 18px; text-align:center; font-weight:700; font-size:14px;
-    line-height:1.8; box-shadow:0 6px 20px rgba(0,0,0,0.3);
+    padding:12px 16px; text-align:center; font-weight:700; font-size:13px;
+    line-height:1.7; box-shadow:0 6px 20px rgba(0,0,0,0.3);
     pointer-events: auto;
   }
 
-  /* slotsAreaもタッチを通過させる */
-  #slotsArea { position:fixed; top:0; left:0; width:100%; height:100%; z-index:101; display:none; pointer-events:none !important; }
+  /* 枠（スロット）を画面中央寄りに配置 */
+  #slotsArea {
+    position:fixed; top:42%; left:50%; transform:translate(-50%, -50%);
+    width:95%; max-width:420px; height:140px; z-index:101; display:none;
+    justify-content:space-between; align-items:center;
+    pointer-events:none !important;
+  }
   .slot {
-    position:absolute; width:26vw; max-width:130px; height:26vw; max-height:130px;
-    border:3px dashed rgba(255,255,255,0.6); border-radius:16px;
-    background:rgba(255,255,255,0.08);
+    position:relative; width:28vw; max-width:120px; height:28vw; max-height:120px;
+    border:3px dashed #ffffff; border-radius:16px;
+    background:rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    box-shadow: 0 0 10px rgba(255,255,255,0.3);
     pointer-events:none;
   }
   .slotLabel {
-    position:absolute; top:-26px; left:0; width:100%; text-align:center;
-    color:#fff; font-size:12px; font-weight:700; opacity:0.85;
+    position:absolute; top:-24px; left:0; width:100%; text-align:center;
+    color:#fff; font-size:13px; font-weight:800;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
   }
 
-  /* カードは明示的にタッチを受け付ける */
   .card {
-    position:absolute; width:24vw; max-width:120px; height:24vw; max-height:120px;
+    position:absolute; width:26vw; max-width:110px; height:26vw; max-height:110px;
     border-radius:14px; background:rgba(255,255,255,0.95);
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 6px 16px rgba(0,0,0,0.35);
@@ -93,13 +108,13 @@
   }
 
   #hint {
-    position:fixed; bottom:100px; left:0; width:100%; z-index:101;
+    position:fixed; bottom:90px; left:0; width:100%; z-index:101;
     padding: 10px; color:#fff; text-align:center; pointer-events:none; display:none;
   }
   #hint .badge {
-    display:inline-block; background: rgba(255,255,255,0.2);
-    border:2px solid rgba(255,255,255,0.45); border-radius:24px;
-    padding:8px 18px; font-size:14px; font-weight:600; backdrop-filter: blur(6px);
+    display:inline-block; background: rgba(0,0,0,0.65);
+    border:2px solid rgba(255,255,255,0.5); border-radius:24px;
+    padding:8px 18px; font-size:13px; font-weight:600; color:#fff;
   }
 
   #clearScreen {
@@ -128,10 +143,12 @@
   <div class="badge">印刷したマーカーに カメラを むけてね</div>
 </div>
 
+<!-- A-Frameシーンの設定変更（透明背景と埋め込み表示） -->
 <a-scene
   mindar-image="imageTargetSrc: ./kagura.mind; autoStart: true; uiScanning: no;"
+  embedded
   color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights"
+  renderer="colorManagement: true, physicallyCorrectLights, alpha: true"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false"
 >
@@ -155,7 +172,7 @@
 </div>
 
 <div id="hint">
-  <div class="badge" id="hintText">カードを ゆびで ドラッグして うごかそう</div>
+  <div class="badge" id="hintText">3にんの カードを 上のわくに ドラッグしてね</div>
 </div>
 
 <button id="checkBtn">これで けってい!</button>
@@ -191,7 +208,7 @@ let gameStarted = false;
 function setupGame(){
   const shuffled = [...CHARACTERS].sort(()=>Math.random()-0.5);
   const W = window.innerWidth, H = window.innerHeight;
-  const startY = H * 0.62;
+  const startY = H * 0.68;
   const positions = [W * 0.18, W * 0.5, W * 0.82];
 
   shuffled.forEach((ch, i)=>{
@@ -236,7 +253,7 @@ function makeDraggable(card){
     snapToNearestSlot(card);
   }
 
-  // --- タッチ操作（スマホ） ---
+  // タッチ操作
   card.addEventListener('touchstart', e => {
     e.stopPropagation();
     const t = e.touches[0];
@@ -252,7 +269,7 @@ function makeDraggable(card){
 
   window.addEventListener('touchend', end);
 
-  // --- マウス操作（PC） ---
+  // マウス操作
   card.addEventListener('mousedown', e => {
     e.stopPropagation();
     start(e.clientX, e.clientY);
@@ -333,7 +350,7 @@ targetEntity.addEventListener('targetFound', () => {
     gameStarted = true;
     gameLayer.style.display = 'block';
     clueBox.style.display = 'block';
-    slotsArea.style.display = 'block';
+    slotsArea.style.display = 'flex';
     hint.style.display = 'block';
     checkBtn.style.display = 'block';
 
