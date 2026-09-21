@@ -36,8 +36,15 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
 
-  #gameLayer { position:fixed; top:0; left:0; width:100%; height:100%; z-index:30; display:none; }
-
+ #gameLayer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100; /* カメラ映像(a-scene)より手前に設定 */
+  pointer-events: none; /* ゲーム開始前は背後のカメラ操作を邪魔しない */
+}
   #clueBox {
     position:fixed; top:64px; left:50%; transform:translateX(-50%);
     z-index:31; width:92%; max-width:400px; display:none;
@@ -295,11 +302,14 @@ targetEntity.addEventListener('targetFound', () => {
   searchHint.style.display = 'none';
   if (!gameStarted){
     gameStarted = true;
+    // 1. まずゲームエリアと各UIを表示する
     gameLayer.style.display = 'block';
     clueBox.style.display = 'block';
     slotsArea.style.display = 'block';
     hint.style.display = 'block';
     checkBtn.style.display = 'block';
+
+    // 2. 表示状態になってからカードを生成・配置する
     setupGame();
   }
 });
