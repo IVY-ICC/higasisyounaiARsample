@@ -36,6 +36,7 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
 
+  /* gameLayerはタッチを通過させる(pointer-events: none) */
   #gameLayer {
     position: fixed;
     top: 0;
@@ -44,7 +45,7 @@
     height: 100%;
     z-index: 100;
     display: none;
-    pointer-events: none;
+    pointer-events: none !important;
   }
 
   #clueBox {
@@ -56,24 +57,28 @@
     pointer-events: auto;
   }
 
-  #slotsArea { position:fixed; top:0; left:0; width:100%; height:100%; z-index:101; display:none; pointer-events:none; }
+  /* slotsAreaもタッチを通過させる */
+  #slotsArea { position:fixed; top:0; left:0; width:100%; height:100%; z-index:101; display:none; pointer-events:none !important; }
   .slot {
     position:absolute; width:26vw; max-width:130px; height:26vw; max-height:130px;
     border:3px dashed rgba(255,255,255,0.6); border-radius:16px;
     background:rgba(255,255,255,0.08);
+    pointer-events:none;
   }
   .slotLabel {
     position:absolute; top:-26px; left:0; width:100%; text-align:center;
     color:#fff; font-size:12px; font-weight:700; opacity:0.85;
   }
 
+  /* カードは明示的にタッチを受け付ける */
   .card {
     position:absolute; width:24vw; max-width:120px; height:24vw; max-height:120px;
     border-radius:14px; background:rgba(255,255,255,0.95);
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 6px 16px rgba(0,0,0,0.35);
     touch-action:none; z-index:105;
-    pointer-events: auto;
+    pointer-events: auto !important;
+    cursor: grab;
   }
   .card img { width:82%; height:82%; object-fit:contain; pointer-events:none; }
   .card.correct { box-shadow:0 0 0 4px #3fbf7f, 0 6px 16px rgba(0,0,0,0.35); }
@@ -84,7 +89,7 @@
     background:#fff; color:#3a2410; border:none; border-radius:30px;
     padding:14px 36px; font-size:16px; font-weight:800;
     box-shadow:0 6px 18px rgba(0,0,0,0.3);
-    pointer-events: auto;
+    pointer-events: auto !important;
   }
 
   #hint {
@@ -186,14 +191,14 @@ let gameStarted = false;
 function setupGame(){
   const shuffled = [...CHARACTERS].sort(()=>Math.random()-0.5);
   const W = window.innerWidth, H = window.innerHeight;
-  const startY = H*0.62;
-  const positions = [W*0.18, W*0.5, W*0.82];
+  const startY = H * 0.62;
+  const positions = [W * 0.18, W * 0.5, W * 0.82];
 
   shuffled.forEach((ch, i)=>{
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.id = ch.id;
-    card.style.left = (positions[i] - 60) + 'px';
+    card.style.left = (positions[i] - 50) + 'px';
     card.style.top = startY + 'px';
 
     const img = document.createElement('img');
@@ -217,11 +222,13 @@ function makeDraggable(card){
     offsetY = y - rect.top;
     card.style.zIndex = 999;
   }
+
   function move(x, y){
     if (!dragging) return;
     card.style.left = (x - offsetX) + 'px';
     card.style.top = (y - offsetY) + 'px';
   }
+
   function end(){
     if (!dragging) return;
     dragging = false;
@@ -229,24 +236,32 @@ function makeDraggable(card){
     snapToNearestSlot(card);
   }
 
-  // スマホ用タッチイベント（スクロールを完全無効化）
+  // --- タッチ操作（スマホ） ---
   card.addEventListener('touchstart', e => {
+    e.stopPropagation();
     const t = e.touches[0];
     start(t.clientX, t.clientY);
-  }, { passive: true });
+  }, { passive: false });
 
-  card.addEventListener('touchmove', e => {
+  window.addEventListener('touchmove', e => {
     if (!dragging) return;
-    if (e.cancelable) e.preventDefault(); // スクロール防止
+    if (e.cancelable) e.preventDefault();
     const t = e.touches[0];
     move(t.clientX, t.clientY);
   }, { passive: false });
 
-  card.addEventListener('touchend', end);
+  window.addEventListener('touchend', end);
 
-  // PC用マウスイベント
-  card.addEventListener('mousedown', e => { start(e.clientX, e.clientY); });
-  window.addEventListener('mousemove', e => { move(e.clientX, e.clientY); });
+  // --- マウス操作（PC） ---
+  card.addEventListener('mousedown', e => {
+    e.stopPropagation();
+    start(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (dragging) move(e.clientX, e.clientY);
+  });
+
   window.addEventListener('mouseup', end);
 }
 
@@ -264,7 +279,7 @@ function snapToNearestSlot(card){
     if (d < nearestDist){ nearestDist = d; nearest = slot; }
   });
 
-  if (nearest && nearestDist < 140){
+  if (nearest && nearestDist < 160){
     const occupied = cards.find(c => c!==card && c.dataset.slot === nearest.id);
     if (occupied){ occupied.dataset.slot = ''; }
     card.dataset.slot = nearest.id;
@@ -316,16 +331,12 @@ targetEntity.addEventListener('targetFound', () => {
   searchHint.style.display = 'none';
   if (!gameStarted){
     gameStarted = true;
-    // 1. ゲームレイヤーを表示し、タッチイベントを有効化する
     gameLayer.style.display = 'block';
-    gameLayer.style.pointerEvents = 'auto';
-    
     clueBox.style.display = 'block';
     slotsArea.style.display = 'block';
     hint.style.display = 'block';
     checkBtn.style.display = 'block';
 
-    // 2. 表示されてからカードをセットアップする
     setupGame();
   }
 });
