@@ -3,37 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>スポット7 なぞとき「3にんの ならびかえ」</title>
+<title>スポット7 マーカーAR 3にんの ならびかえ</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
   html, body { width:100%; height:100%; overflow:hidden; background:#000;
     font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
 
-  #camera { position:fixed; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1; display:none; }
-  #gameArea { position:fixed; top:0; left:0; width:100%; height:100%; z-index:2; display:none; }
+  a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
+
+  #searchHint {
+    position:fixed; bottom:0; left:0; width:100%; z-index:20;
+    padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    color:#fff; text-align:center; pointer-events:none;
+  }
+  #searchHint .badge {
+    display:inline-block; background: rgba(255,255,255,0.18);
+    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
+    padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
+  }
 
   #ui {
-    position:fixed; top:0; left:0; width:100%; z-index:10;
+    position:fixed; top:0; left:0; width:100%; z-index:20;
     padding: 14px 18px; padding-top: max(14px, env(safe-area-inset-top));
-    background: linear-gradient(rgba(0,0,0,0.65), transparent);
-    color:#fff; pointer-events:none; display:none;
+    background: linear-gradient(rgba(0,0,0,0.6), transparent);
+    color:#fff; pointer-events:none;
   }
   #ui h1 { font-size:16px; font-weight:700; }
-  #ui p { font-size:12px; opacity:0.9; margin-top:2px; }
+  #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
+
+  #gameLayer { position:fixed; top:0; left:0; width:100%; height:100%; z-index:30; display:none; }
 
   #clueBox {
     position:fixed; top:64px; left:50%; transform:translateX(-50%);
-    z-index:11; width:92%; max-width:400px; display:none;
+    z-index:31; width:92%; max-width:400px; display:none;
     background:rgba(255,255,255,0.95); color:#3a2410; border-radius:16px;
     padding:14px 18px; text-align:center; font-weight:700; font-size:14px;
     line-height:1.8; box-shadow:0 6px 20px rgba(0,0,0,0.3);
   }
 
-  /* ---- 並べる枠（ゴール） ---- */
-  #slotsArea {
-    position:fixed; top:0; left:0; width:100%; height:100%; z-index:12;
-    display:none;
-  }
+  #slotsArea { position:fixed; top:0; left:0; width:100%; height:100%; z-index:32; display:none; }
   .slot {
     position:absolute; width:26vw; max-width:130px; height:26vw; max-height:130px;
     border:3px dashed rgba(255,255,255,0.6); border-radius:16px;
@@ -44,27 +57,26 @@
     color:#fff; font-size:12px; font-weight:700; opacity:0.85;
   }
 
-  /* ---- ドラッグ可能なキャラカード ---- */
   .card {
     position:absolute; width:24vw; max-width:120px; height:24vw; max-height:120px;
     border-radius:14px; background:rgba(255,255,255,0.95);
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 6px 16px rgba(0,0,0,0.35);
-    touch-action:none; z-index:20;
+    touch-action:none; z-index:35;
   }
   .card img { width:82%; height:82%; object-fit:contain; pointer-events:none; }
   .card.correct { box-shadow:0 0 0 4px #3fbf7f, 0 6px 16px rgba(0,0,0,0.35); }
 
   #checkBtn {
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-    z-index:15; display:none;
+    z-index:33; display:none;
     background:#fff; color:#3a2410; border:none; border-radius:30px;
     padding:14px 36px; font-size:16px; font-weight:800;
     box-shadow:0 6px 18px rgba(0,0,0,0.3);
   }
 
   #hint {
-    position:fixed; bottom:100px; left:0; width:100%; z-index:10;
+    position:fixed; bottom:100px; left:0; width:100%; z-index:31;
     padding: 10px; color:#fff; text-align:center; pointer-events:none; display:none;
   }
   #hint .badge {
@@ -73,24 +85,9 @@
     padding:8px 18px; font-size:14px; font-weight:600; backdrop-filter: blur(6px);
   }
 
-  #startScreen {
-    position:fixed; top:0; left:0; width:100%; height:100%;
-    background: linear-gradient(160deg, #7a4ab8, #4a2a80);
-    z-index:100;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    color:#fff; text-align:center; padding:26px;
-  }
-  #startScreen .num { background:#fff; color:#4a2a80; font-weight:800; font-size:15px; border-radius:20px; padding:5px 18px; margin-bottom:14px; }
-  #startScreen .icon { font-size:60px; margin-bottom:14px; }
-  #startScreen h2 { font-size:22px; margin-bottom:12px; font-weight:800; }
-  #startScreen p { font-size:14px; opacity:0.95; line-height:1.85; max-width:310px; margin-bottom:26px; }
-  #startBtn { background:#fff; color:#4a2a80; border:none; border-radius:32px; padding:18px 44px; font-size:18px; font-weight:800; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
-  #errBox { display:none; margin-top:18px; font-size:13px; color:#fff; background:rgba(0,0,0,0.25); padding:12px 16px; border-radius:14px; max-width:290px; line-height:1.7; }
-  #loadingBox { display:none; margin-top:16px; font-size:14px; }
-
   #clearScreen {
     position:fixed; top:0; left:0; width:100%; height:100%;
-    background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:50;
+    background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:40;
     display:none; flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
   }
@@ -104,23 +101,31 @@
 </head>
 <body>
 
-<div id="startScreen">
-  <div class="num">スポット 7 / 9</div>
-  <div class="icon">🐍</div>
-  <h2>3にんの ならびかえ</h2>
-  <p>しゃしんを とって、ヒントを よみながら<br>3にんを ただしい じゅんばんに ならべよう!</p>
-  <button id="startBtn">しゃしんを とる</button>
-  <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
-  <div id="errBox"></div>
-  <div id="loadingBox">よみこみちゅう…</div>
-</div>
-
-<img id="camera" alt="とったしゃしん">
-
 <div id="ui">
   <h1>由布市ARスタンプラリー</h1>
   <p>スポット7・庄内神楽</p>
 </div>
+
+<div id="searchHint">
+  <div class="badge">印刷したマーカーに カメラを むけてね</div>
+</div>
+
+<!--
+  ★注意★ imageTargetSrc は、実際にアップロードする .mind ファイル名に
+  合わせて書き換えてください（例: ./kagura.mind）
+-->
+<a-scene
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no;"
+  color-space="sRGB"
+  renderer="colorManagement: true, physicallyCorrectLights"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+>
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-entity id="target" mindar-image-target="targetIndex: 0"></a-entity>
+</a-scene>
+
+<div id="gameLayer"></div>
 
 <div id="clueBox">
   おろちくんは、みことくんの みぎに いないよ。<br>
@@ -148,13 +153,9 @@
 </div>
 
 <script>
-const video = document.getElementById('camera');
-const startScreen = document.getElementById('startScreen');
-const startBtn = document.getElementById('startBtn');
-const errBox = document.getElementById('errBox');
-const loadingBox = document.getElementById('loadingBox');
-const fileInput = document.getElementById('fileInput');
-const ui = document.getElementById('ui');
+const targetEntity = document.getElementById('target');
+const searchHint = document.getElementById('searchHint');
+const gameLayer = document.getElementById('gameLayer');
 const clueBox = document.getElementById('clueBox');
 const slotsArea = document.getElementById('slotsArea');
 const hint = document.getElementById('hint');
@@ -162,9 +163,7 @@ const hintText = document.getElementById('hintText');
 const checkBtn = document.getElementById('checkBtn');
 const clearScreen = document.getElementById('clearScreen');
 const clearText = document.getElementById('clearText');
-const gameArea = document.getElementById('gameArea');
 
-// 正解: 左=おろち, 中央=みこと, 右=ひめ
 const CHARACTERS = [
   { id:'orochi', name:'おろちくん', img:'char_orochi.png', correctSlot:'L' },
   { id:'mikoto', name:'みことくん', img:'char_mikoto.png', correctSlot:'C' },
@@ -173,44 +172,9 @@ const CHARACTERS = [
 
 let cards = [];
 let cleared = false;
-
-startBtn.addEventListener('click', ()=>{ fileInput.click(); });
-
-fileInput.addEventListener('change', (e)=>{
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  loadingBox.style.display = 'block';
-  errBox.style.display = 'none';
-
-  const reader = new FileReader();
-  reader.onload = (ev)=>{
-    video.onload = ()=>{
-      loadingBox.style.display = 'none';
-      startScreen.style.display = 'none';
-      video.style.display = 'block';
-      gameArea.style.display = 'block';
-      ui.style.display = 'block';
-      clueBox.style.display = 'block';
-      slotsArea.style.display = 'block';
-      hint.style.display = 'block';
-      checkBtn.style.display = 'block';
-      setupGame();
-    };
-    video.onerror = showLoadError;
-    video.src = ev.target.result;
-  };
-  reader.onerror = showLoadError;
-  reader.readAsDataURL(file);
-});
-
-function showLoadError(){
-  loadingBox.style.display = 'none';
-  errBox.style.display = 'block';
-  errBox.textContent = 'しゃしんが よみこめなかったよ。もういちど とってみてね。';
-}
+let gameStarted = false;
 
 function setupGame(){
-  // シャッフルしたキャラを画面下部にランダム配置
   const shuffled = [...CHARACTERS].sort(()=>Math.random()-0.5);
   const W = window.innerWidth, H = window.innerHeight;
   const startY = H*0.62;
@@ -226,7 +190,7 @@ function setupGame(){
     const img = document.createElement('img');
     img.src = ch.img;
     card.appendChild(img);
-    gameArea.appendChild(card);
+    gameLayer.appendChild(card);
     cards.push(card);
 
     makeDraggable(card);
@@ -252,7 +216,7 @@ function makeDraggable(card){
   function end(){
     if (!dragging) return;
     dragging = false;
-    card.style.zIndex = 20;
+    card.style.zIndex = 35;
     snapToNearestSlot(card);
   }
 
@@ -280,7 +244,6 @@ function snapToNearestSlot(card){
   });
 
   if (nearest && nearestDist < 140){
-    // 既にそのスロットに他のカードがあれば入れ替え
     const occupied = cards.find(c => c!==card && c.dataset.slot === nearest.id);
     if (occupied){ occupied.dataset.slot = ''; }
     card.dataset.slot = nearest.id;
@@ -326,6 +289,22 @@ checkBtn.addEventListener('click', ()=>{
   } else {
     hintText.textContent = 'ちがう じゅんばんみたい。もういちど ヒントを よもう';
   }
+});
+
+targetEntity.addEventListener('targetFound', () => {
+  searchHint.style.display = 'none';
+  if (!gameStarted){
+    gameStarted = true;
+    gameLayer.style.display = 'block';
+    clueBox.style.display = 'block';
+    slotsArea.style.display = 'block';
+    hint.style.display = 'block';
+    checkBtn.style.display = 'block';
+    setupGame();
+  }
+});
+targetEntity.addEventListener('targetLost', () => {
+  if (!gameStarted) searchHint.style.display = 'block';
 });
 </script>
 </body>
