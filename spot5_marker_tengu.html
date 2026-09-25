@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>スポット5 マーカーAR てんぐのおめん</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#000;
+    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
+
+  a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
+
+  .screen { position:fixed; top:0; left:0; width:100%; height:100%; display:none; }
+  .screen.show { display:flex; }
+
+  #searchHint {
+    position:fixed; bottom:0; left:0; width:100%; z-index:20;
+    padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    color:#fff; text-align:center; pointer-events:none;
+  }
+  #searchHint .badge {
+    display:inline-block; background: rgba(255,255,255,0.18);
+    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
+    padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
+  }
+
+  #ui {
+    position:fixed; top:0; left:0; width:100%; z-index:20;
+    padding: 14px 18px; padding-top: max(14px, env(safe-area-inset-top));
+    background: linear-gradient(rgba(0,0,0,0.6), transparent);
+    color:#fff; pointer-events:none;
+  }
+  #ui h1 { font-size:16px; font-weight:700; }
+  #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
+
+  /* ---- クイズ画面 ---- */
+  #quizScreen {
+    background: rgba(20,10,8,0.88); z-index:30;
+    flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  #quizScreen h2 { font-size:20px; margin-bottom:20px; font-weight:800; line-height:1.6; }
+  #choices { display:flex; flex-direction:column; gap:12px; width:100%; max-width:320px; }
+  .choiceBtn {
+    background:#fff; color:#5a2a1a; border:3px solid #fff; border-radius:20px;
+    padding:16px; font-size:17px; font-weight:800; box-shadow:0 4px 14px rgba(0,0,0,0.25);
+  }
+  .choiceBtn.wrong { background:#ffd9d9; border-color:#ff8a8a; }
+  .choiceBtn.correct { background:#d6f5e0; border-color:#3fbf7f; }
+  #quizFeedback { margin-top:14px; font-size:15px; min-height:22px; font-weight:700; }
+
+  /* ---- 天狗登場画面 ---- */
+  #tenguRevealScreen {
+    background: linear-gradient(160deg, #ff9d5c, #d65c3c); z-index:31;
+    flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  #tenguRevealScreen .tenguIcon { font-size:88px; margin-bottom:16px; animation: pop 0.6s cubic-bezier(.34,1.56,.64,1); }
+  #tenguRevealScreen h2 { font-size:22px; margin-bottom:10px; font-weight:800; }
+  #tenguRevealScreen p { font-size:14px; opacity:0.95; line-height:1.8; max-width:290px; margin-bottom:22px; }
+
+  #startBtn, #saveBtn, #retakeBtn {
+    background:#fff; color:#a8382a; border:none; border-radius:32px;
+    padding:15px 36px; font-size:16px; font-weight:800; box-shadow:0 6px 18px rgba(0,0,0,0.25);
+  }
+
+  /* ---- お面合わせ画面 ---- */
+  #maskScreen { background:#000; z-index:32; flex-direction:column; }
+  #photoWrap { position:relative; flex:1; overflow:hidden; touch-action:none; }
+  #selfie { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
+  #maskCanvas { position:absolute; top:0; left:0; width:100%; height:100%; }
+
+  #topLabel {
+    position:absolute; top:0; left:0; width:100%; z-index:5;
+    padding: 14px 18px; padding-top: max(14px, env(safe-area-inset-top));
+    background: linear-gradient(rgba(0,0,0,0.6), transparent);
+    color:#fff; text-align:center; font-size:13px; pointer-events:none;
+  }
+
+  #maskUI { background:rgba(20,10,8,0.92); padding:14px 18px; padding-bottom: max(16px, env(safe-area-inset-bottom)); color:#fff; }
+  #maskUI .row { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; }
+  #maskUI input[type=range] { flex:1; }
+  #maskUI .btnRow { display:flex; gap:10px; margin-top:12px; }
+  #maskUI .btnRow button { flex:1; padding:14px; border-radius:16px; border:none; font-size:15px; font-weight:800; }
+  #saveBtn { background:#ffd66b; color:#4a2a10; }
+  #retakeBtn { background:rgba(255,255,255,0.15); color:#fff; }
+
+  input[type=file] { display:none; }
+  #loadingBox { display:none; margin-top:16px; font-size:14px; color:#fff; }
+  #errBox { display:none; margin-top:16px; font-size:13px; color:#fff; background:rgba(0,0,0,0.25); padding:12px 16px; border-radius:14px; max-width:290px; line-height:1.7; }
+
+  /* ---- 完了画面 ---- */
+  #clearScreen {
+    background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:33;
+    flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  .stamp {
+    width:130px; height:130px; border-radius:50%; background:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:56px; margin-bottom:22px;
+    animation: pop 0.5s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  }
+  #clearScreen h2 { font-size:24px; margin-bottom:10px; font-weight:800; }
+  #clearScreen p { font-size:15px; opacity:0.95; max-width:290px; line-height:1.9; }
+  @keyframes pop { 0%{transform:scale(0);} 80%{transform:scale(1.15);} 100%{transform:scale(1);} }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>由布市ARスタンプラリー</h1>
+  <p>スポット5・てんぐのおめん</p>
+</div>
+
+<div id="searchHint">
+  <div class="badge">印刷したマーカーに カメラを むけてね</div>
+</div>
+
+<!-- ★ imageTargetSrc は実際の .mind ファイル名に書き換えてください -->
+<a-scene
+  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no;"
+  color-space="sRGB"
+  renderer="colorManagement: true, physicallyCorrectLights"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+>
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-entity id="target" mindar-image-target="targetIndex: 0"></a-entity>
+</a-scene>
+
+<!-- ① クイズ画面 -->
+<div id="quizScreen" class="screen">
+  <h2>もんだい：<br>由布市が ゆうめいな のは<br>つぎの うち どれ？</h2>
+  <div id="choices">
+    <button class="choiceBtn" data-val="onsen">おんせん</button>
+    <button class="choiceBtn" data-val="umi">うみ</button>
+    <button class="choiceBtn" data-val="yuki">ゆきまつり</button>
+  </div>
+  <div id="quizFeedback"></div>
+</div>
+
+<!-- ② 天狗登場画面 -->
+<div id="tenguRevealScreen" class="screen">
+  <div class="tenguIcon">👺</div>
+  <h2>せいかい!てんぐが あらわれた!</h2>
+  <p>てんぐの おめんを、じぶんの かおに あわせて しゃしんを とろう!</p>
+  <button id="startBtn">じどりを とる</button>
+  <input type="file" id="fileInput" accept="image/*" capture="user">
+  <div id="errBox"></div>
+  <div id="loadingBox">よみこみちゅう…</div>
+</div>
+
+<!-- ③ お面合わせ画面 -->
+<div id="maskScreen" class="screen">
+  <div id="photoWrap">
+    <div id="topLabel">おめんを ゆびで うごかして、かおに あわせよう</div>
+    <img id="selfie" alt="じどり">
+    <canvas id="maskCanvas"></canvas>
+  </div>
+  <div id="maskUI">
+    <div class="row">🔍 <input type="range" id="sizeSlider" min="40" max="260" value="140"></div>
+    <div class="row">🔄 <input type="range" id="rotSlider" min="-45" max="45" value="0"></div>
+    <div class="btnRow">
+      <button id="retakeBtn">とりなおす</button>
+      <button id="saveBtn">この しゃしんを ほぞん</button>
+    </div>
+  </div>
+</div>
+
+<!-- ④ 完了画面 -->
+<div id="clearScreen" class="screen">
+  <div class="stamp">👺</div>
+  <h2>スタンプ げっと!</h2>
+  <p>てんぐに へんしん できたね!<br>しゃしんは ほぞんされたよ。</p>
+</div>
+
+<script>
+const targetEntity = document.getElementById('target');
+const searchHint = document.getElementById('searchHint');
+
+const quizScreen = document.getElementById('quizScreen');
+const tenguRevealScreen = document.getElementById('tenguRevealScreen');
+const maskScreen = document.getElementById('maskScreen');
+const clearScreen = document.getElementById('clearScreen');
+
+const choices = document.getElementById('choices');
+const quizFeedback = document.getElementById('quizFeedback');
+
+const startBtn = document.getElementById('startBtn');
+const fileInput = document.getElementById('fileInput');
+const errBox = document.getElementById('errBox');
+const loadingBox = document.getElementById('loadingBox');
+
+const selfie = document.getElementById('selfie');
+const maskCanvas = document.getElementById('maskCanvas');
+const mctx = maskCanvas.getContext('2d');
+const sizeSlider = document.getElementById('sizeSlider');
+const rotSlider = document.getElementById('rotSlider');
+const saveBtn = document.getElementById('saveBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+
+let gameStarted = false;
+let answered = false;
+
+function showScreen(el){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
+  el.classList.add('show');
+}
+
+// ---- マーカー検出 ----
+targetEntity.addEventListener('targetFound', () => {
+  searchHint.style.display = 'none';
+  if (!gameStarted){
+    gameStarted = true;
+    showScreen(quizScreen);
+  }
+});
+targetEntity.addEventListener('targetLost', () => {
+  if (!gameStarted) searchHint.style.display = 'block';
+});
+
+// ---- ① クイズ ----
+choices.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.choiceBtn');
+  if (!btn || answered) return;
+  if (btn.dataset.val === 'onsen'){
+    answered = true;
+    btn.classList.add('correct');
+    quizFeedback.textContent = 'せいかい!';
+    setTimeout(()=> showScreen(tenguRevealScreen), 700);
+  } else {
+    btn.classList.add('wrong');
+    quizFeedback.textContent = 'ちがうよ、もういちど かんがえてみよう';
+    setTimeout(()=> btn.classList.remove('wrong'), 700);
+  }
+});
+
+// ---- ② 自撮り撮影 ----
+startBtn.addEventListener('click', ()=>{ fileInput.click(); });
+
+fileInput.addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  loadingBox.style.display = 'block';
+  errBox.style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    selfie.onload = ()=>{
+      loadingBox.style.display = 'none';
+      showScreen(maskScreen);
+      resizeMaskCanvas();
+      requestAnimationFrame(drawMask);
+    };
+    selfie.onerror = showLoadError;
+    selfie.src = ev.target.result;
+  };
+  reader.onerror = showLoadError;
+  reader.readAsDataURL(file);
+});
+
+function showLoadError(){
+  loadingBox.style.display = 'none';
+  errBox.style.display = 'block';
+  errBox.textContent = 'しゃしんが よみこめなかったよ。もういちど とってみてね。';
+}
+
+retakeBtn.addEventListener('click', ()=>{ fileInput.click(); });
+
+// ---- ③ お面の配置 ----
+let maskX = 0.5, maskY = 0.42;
+let maskSize = 140;
+let maskRot = 0;
+
+function resizeMaskCanvas(){
+  maskCanvas.width = maskCanvas.clientWidth;
+  maskCanvas.height = maskCanvas.clientHeight;
+  maskX = 0.5; maskY = 0.42;
+}
+window.addEventListener('resize', resizeMaskCanvas);
+
+sizeSlider.addEventListener('input', ()=>{ maskSize = parseInt(sizeSlider.value,10); });
+rotSlider.addEventListener('input', ()=>{ maskRot = parseInt(rotSlider.value,10); });
+
+let dragging = false;
+function toLocal(clientX, clientY){
+  const rect = maskCanvas.getBoundingClientRect();
+  return { x: (clientX - rect.left) / rect.width, y: (clientY - rect.top) / rect.height };
+}
+maskCanvas.addEventListener('touchstart', e=>{
+  dragging = true;
+  const t = e.touches[0];
+  const p = toLocal(t.clientX, t.clientY);
+  maskX = p.x; maskY = p.y;
+}, {passive:true});
+maskCanvas.addEventListener('touchmove', e=>{
+  if (!dragging) return;
+  const t = e.touches[0];
+  const p = toLocal(t.clientX, t.clientY);
+  maskX = p.x; maskY = p.y;
+}, {passive:true});
+maskCanvas.addEventListener('touchend', ()=>{ dragging = false; });
+
+maskCanvas.addEventListener('mousedown', e=>{
+  dragging = true;
+  const p = toLocal(e.clientX, e.clientY);
+  maskX = p.x; maskY = p.y;
+});
+window.addEventListener('mousemove', e=>{
+  if (!dragging) return;
+  const p = toLocal(e.clientX, e.clientY);
+  maskX = p.x; maskY = p.y;
+});
+window.addEventListener('mouseup', ()=>{ dragging = false; });
+
+function drawTenguMask(ctx, cx, cy, size, rotDeg){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotDeg * Math.PI / 180);
+
+  ctx.fillStyle = '#c93a2e';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size*0.62, size*0.78, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = size * 0.05;
+  ctx.beginPath();
+  ctx.moveTo(-size*0.42, -size*0.28); ctx.lineTo(-size*0.12, -size*0.38);
+  ctx.moveTo(size*0.42, -size*0.28); ctx.lineTo(size*0.12, -size*0.38);
+  ctx.stroke();
+
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.ellipse(-size*0.22, -size*0.05, size*0.09, size*0.12, 0, 0, Math.PI*2);
+  ctx.ellipse(size*0.22, -size*0.05, size*0.09, size*0.12, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#a8281c';
+  ctx.beginPath();
+  ctx.moveTo(-size*0.1, size*0.05);
+  ctx.quadraticCurveTo(size*0.05, size*0.05, size*0.85, size*0.02);
+  ctx.quadraticCurveTo(size*0.05, size*0.22, size*0.1, size*0.18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(size*0.85, size*0.02, size*0.06, size*0.045, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.moveTo(-size*0.55, -size*0.55);
+  ctx.quadraticCurveTo(0, -size*1.15, size*0.55, -size*0.55);
+  ctx.quadraticCurveTo(0, -size*0.75, -size*0.55, -size*0.55);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawMask(){
+  mctx.clearRect(0,0,maskCanvas.width, maskCanvas.height);
+  const cx = maskX * maskCanvas.width;
+  const cy = maskY * maskCanvas.height;
+  drawTenguMask(mctx, cx, cy, maskSize, maskRot);
+  if (maskScreen.classList.contains('show')) requestAnimationFrame(drawMask);
+}
+
+// ---- ④ 保存 ----
+saveBtn.addEventListener('click', ()=>{
+  const outW = selfie.naturalWidth || maskCanvas.width;
+  const outH = selfie.naturalHeight || maskCanvas.height;
+  const out = document.createElement('canvas');
+  out.width = outW; out.height = outH;
+  const octx = out.getContext('2d');
+  octx.drawImage(selfie, 0, 0, outW, outH);
+
+  const cx = maskX * outW;
+  const cy = maskY * outH;
+  const sizeOnOutput = maskSize * (outH / maskCanvas.height);
+  drawTenguMask(octx, cx, cy, sizeOnOutput, maskRot);
+
+  const dataUrl = out.toDataURL('image/png');
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = 'tengu_photo.png';
+  link.click();
+
+  showScreen(clearScreen);
+});
+</script>
+</body>
+</html>
