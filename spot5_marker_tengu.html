@@ -2,9 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>スポット5 マーカーAR てんぐのおめん</title>
 
+<!-- A-Frame と MindAR の読み込み -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
@@ -122,9 +123,9 @@
   <div class="badge">印刷したマーカーに カメラを むけてね</div>
 </div>
 
-<!-- ★ imageTargetSrc は実際の .mind ファイル名に書き換えてください -->
+<!-- 修正点: imageTargetSrc を ./tengu.mind に変更 -->
 <a-scene
-  mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no;"
+  mindar-image="imageTargetSrc: ./tengu.mind; autoStart: true; uiScanning: no;"
   color-space="sRGB"
   renderer="colorManagement: true, physicallyCorrectLights"
   vr-mode-ui="enabled: false"
