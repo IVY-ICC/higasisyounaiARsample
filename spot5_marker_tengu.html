@@ -11,7 +11,8 @@
 
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
-  html, body { width:100%; height:100%; overflow:hidden; background:#000;
+  /* カメラ映像が見えるよう背景を透明化 */
+  html, body { width:100%; height:100%; overflow:hidden; background:transparent;
     font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
 
   a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
@@ -26,8 +27,8 @@
     color:#fff; text-align:center; pointer-events:none;
   }
   #searchHint .badge {
-    display:inline-block; background: rgba(255,255,255,0.18);
-    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
+    display:inline-block; background: rgba(0,0,0,0.4);
+    border:2px solid rgba(255,255,255,0.6); border-radius:24px;
     padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
   }
 
@@ -40,9 +41,10 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
 
-  /* ---- クイズ画面 ---- */
+  /* ---- クイズ画面（半透明化） ---- */
   #quizScreen {
-    background: rgba(20,10,8,0.88); z-index:30;
+    background: rgba(20,10,8,0.75); z-index:30;
+    backdrop-filter: blur(4px);
     flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
   }
@@ -56,9 +58,10 @@
   .choiceBtn.correct { background:#d6f5e0; border-color:#3fbf7f; }
   #quizFeedback { margin-top:14px; font-size:15px; min-height:22px; font-weight:700; }
 
-  /* ---- 天狗登場画面 ---- */
+  /* ---- 天狗登場画面（半透明化） ---- */
   #tenguRevealScreen {
-    background: linear-gradient(160deg, #ff9d5c, #d65c3c); z-index:31;
+    background: rgba(214, 92, 60, 0.85); z-index:31;
+    backdrop-filter: blur(4px);
     flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
   }
@@ -72,7 +75,7 @@
   }
 
   /* ---- お面合わせ画面 ---- */
-  #maskScreen { background:#000; z-index:32; flex-direction:column; }
+  #maskScreen { background:rgba(0,0,0,0.9); z-index:32; flex-direction:column; }
   #photoWrap { position:relative; flex:1; overflow:hidden; touch-action:none; }
   #selfie { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
   #maskCanvas { position:absolute; top:0; left:0; width:100%; height:100%; }
@@ -98,7 +101,7 @@
 
   /* ---- 完了画面 ---- */
   #clearScreen {
-    background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:33;
+    background: rgba(28, 94, 63, 0.9); z-index:33;
     flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
   }
@@ -126,7 +129,7 @@
 <a-scene
   mindar-image="imageTargetSrc: ./tengu.mind; autoStart: true; uiScanning: no;"
   color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights"
+  renderer="colorManagement: true, physicallyCorrectLights, alpha: true"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false"
 >
