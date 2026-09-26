@@ -11,7 +11,7 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
   
-  /* MindARの背景黒を強力に透明化してカメラを表示 */
+  /* カメラ背景の透明化 */
   html, body {
     width:100%; height:100%; overflow:hidden;
     background: transparent !important;
@@ -55,7 +55,11 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
 
-  #gameLayer { position:fixed; top:0; left:0; width:100%; height:100%; z-index:30; display:none; }
+  /* ドラッグ操作を妨げないよう pointer-events: none を指定 */
+  #gameLayer { 
+    position:fixed; top:0; left:0; width:100%; height:100%; 
+    z-index:30; display:none; pointer-events:none; 
+  }
 
   #clueBox {
     position:fixed; top:64px; left:50%; transform:translateX(-50%);
@@ -63,9 +67,13 @@
     background:rgba(255,255,255,0.92); color:#3a2410; border-radius:16px;
     padding:14px 18px; text-align:center; font-weight:700; font-size:14px;
     line-height:1.8; box-shadow:0 6px 20px rgba(0,0,0,0.3); backdrop-filter: blur(4px);
+    pointer-events:none;
   }
 
-  #slotsArea { position:fixed; top:0; left:0; width:100%; height:100%; z-index:32; display:none; }
+  #slotsArea { 
+    position:fixed; top:0; left:0; width:100%; height:100%; 
+    z-index:32; display:none; pointer-events:none; 
+  }
   .slot {
     position:absolute; width:26vw; max-width:130px; height:26vw; max-height:130px;
     border:3px dashed rgba(255,255,255,0.8); border-radius:16px;
@@ -76,12 +84,13 @@
     color:#fff; font-size:12px; font-weight:700; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   }
 
+  /* カード本体のみタッチ操作を受け付ける */
   .card {
     position:absolute; width:24vw; max-width:120px; height:24vw; max-height:120px;
     border-radius:14px; background:rgba(255,255,255,0.95);
     display:flex; align-items:center; justify-content:center;
     box-shadow:0 6px 16px rgba(0,0,0,0.35);
-    touch-action:none; z-index:35;
+    touch-action:none; z-index:35; pointer-events:auto;
   }
   .card img { width:82%; height:82%; object-fit:contain; pointer-events:none; }
   .card.correct { box-shadow:0 0 0 4px #3fbf7f, 0 6px 16px rgba(0,0,0,0.35); }
@@ -91,7 +100,7 @@
     z-index:33; display:none;
     background:#fff; color:#3a2410; border:none; border-radius:30px;
     padding:14px 36px; font-size:16px; font-weight:800;
-    box-shadow:0 6px 18px rgba(0,0,0,0.3);
+    box-shadow:0 6px 18px rgba(0,0,0,0.3); pointer-events:auto;
   }
 
   #hint {
@@ -109,6 +118,7 @@
     background: rgba(28, 94, 63, 0.92); z-index:40;
     display:none; flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px; backdrop-filter: blur(4px);
+    pointer-events:auto;
   }
   #clearScreen.show { display:flex; animation: fadeIn 0.5s ease; }
   #clearScreen .stamp { width:130px; height:130px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:56px; margin-bottom:22px; animation: pop 0.5s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
@@ -192,14 +202,27 @@ let gameStarted = false;
 function setupGame(){
   const shuffled = [...CHARACTERS].sort(()=>Math.random()-0.5);
   const W = window.innerWidth, H = window.innerHeight;
-  const startY = H*0.62;
-  const positions = [W*0.18, W*0.5, W*0.82];
+  const startY = H * 0.62;
+  const positions = [W * 0.18, W * 0.5, W * 0.82];
 
+  // スロット枠の位置計算
+  const slotL = document.getElementById('slotL');
+  const slotC = document.getElementById('slotC');
+  const slotR = document.getElementById('slotR');
+
+  const slotY = H * 0.38;
+  const slotW = Math.min(W * 0.26, 130);
+  slotL.style.top = slotY + 'px'; slotL.style.left = (W*0.18 - slotW/2) + 'px';
+  slotC.style.top = slotY + 'px'; slotC.style.left = (W*0.5 - slotW/2) + 'px';
+  slotR.style.top = slotY + 'px'; slotR.style.left = (W*0.82 - slotW/2) + 'px';
+
+  // カード生成
+  const cardW = Math.min(W * 0.24, 120);
   shuffled.forEach((ch, i)=>{
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.id = ch.id;
-    card.style.left = (positions[i] - 60) + 'px';
+    card.style.left = (positions[i] - cardW/2) + 'px';
     card.style.top = startY + 'px';
 
     const img = document.createElement('img');
@@ -210,16 +233,6 @@ function setupGame(){
 
     makeDraggable(card);
   });
-
-  // スロット位置（#slotsArea）の設定
-  const slotL = document.getElementById('slotL');
-  const slotC = document.getElementById('slotC');
-  const slotR = document.getElementById('slotR');
-
-  const slotY = H * 0.38;
-  slotL.style.top = slotY + 'px'; slotL.style.left = (W*0.18 - 65) + 'px';
-  slotC.style.top = slotY + 'px'; slotC.style.left = (W*0.5 - 65) + 'px';
-  slotR.style.top = slotY + 'px'; slotR.style.left = (W*0.82 - 65) + 'px';
 }
 
 function makeDraggable(card){
@@ -227,17 +240,20 @@ function makeDraggable(card){
   let offsetX = 0, offsetY = 0;
 
   function start(x, y){
+    if (cleared) return;
     dragging = true;
     const rect = card.getBoundingClientRect();
     offsetX = x - rect.left;
     offsetY = y - rect.top;
     card.style.zIndex = 999;
   }
+
   function move(x, y){
     if (!dragging) return;
     card.style.left = (x - offsetX) + 'px';
     card.style.top = (y - offsetY) + 'px';
   }
+
   function end(){
     if (!dragging) return;
     dragging = false;
@@ -245,12 +261,30 @@ function makeDraggable(card){
     snapToNearestSlot(card);
   }
 
-  card.addEventListener('touchstart', e=>{ const t=e.touches[0]; start(t.clientX,t.clientY); }, {passive:true});
-  card.addEventListener('touchmove', e=>{ const t=e.touches[0]; move(t.clientX,t.clientY); }, {passive:true});
-  card.addEventListener('touchend', end);
+  // タッチイベント
+  card.addEventListener('touchstart', e=>{
+    const t = e.touches[0];
+    start(t.clientX, t.clientY);
+  }, {passive:true});
 
-  card.addEventListener('mousedown', e=>{ start(e.clientX,e.clientY); });
-  window.addEventListener('mousemove', e=>{ move(e.clientX,e.clientY); });
+  window.addEventListener('touchmove', e=>{
+    if (dragging && e.touches.length > 0) {
+      const t = e.touches[0];
+      move(t.clientX, t.clientY);
+    }
+  }, {passive:true});
+
+  window.addEventListener('touchend', end);
+
+  // マウスイベント
+  card.addEventListener('mousedown', e=>{
+    start(e.clientX, e.clientY);
+  });
+
+  window.addEventListener('mousemove', e=>{
+    move(e.clientX, e.clientY);
+  });
+
   window.addEventListener('mouseup', end);
 }
 
