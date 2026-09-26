@@ -2,18 +2,23 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>スポット7 マーカーAR 3にんの ならびかえ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>スポット7 マーカーAR 庄内神楽</title>
 
+<!-- A-Frame と MindAR の読み込み -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
-  html, body { width:100%; height:100%; overflow:hidden; background:#000;
+  /* カメラ映像が見えるよう背景を透明化 */
+  html, body { width:100%; height:100%; overflow:hidden; background:transparent;
     font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
 
   a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
+
+  .screen { position:fixed; top:0; left:0; width:100%; height:100%; display:none; }
+  .screen.show { display:flex; }
 
   #searchHint {
     position:fixed; bottom:0; left:0; width:100%; z-index:20;
@@ -22,8 +27,8 @@
     color:#fff; text-align:center; pointer-events:none;
   }
   #searchHint .badge {
-    display:inline-block; background: rgba(255,255,255,0.18);
-    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
+    display:inline-block; background: rgba(0,0,0,0.4);
+    border:2px solid rgba(255,255,255,0.6); border-radius:24px;
     padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
   }
 
@@ -36,84 +41,37 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
 
-  #gameLayer {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 100; display: none; pointer-events: none !important;
-  }
-
-  #clueBox {
-    position:fixed; top:60px; left:50%; transform:translateX(-50%);
-    z-index:101; width:92%; max-width:400px; display:none;
-    background:rgba(255,255,255,0.95); color:#3a2410; border-radius:16px;
-    padding:12px 16px; text-align:center; font-weight:700; font-size:13px;
-    line-height:1.7; box-shadow:0 6px 20px rgba(0,0,0,0.3);
-    pointer-events: auto;
-  }
-
-  /* 枠（スロット）を画面中央寄りにくっきり配置 */
-  #slotsArea {
-    position:fixed; top:42%; left:50%; transform:translate(-50%, -50%);
-    width:95%; max-width:420px; height:140px; z-index:101; display:none;
-    justify-content:space-between; align-items:center;
-    pointer-events:none !important;
-  }
-  .slot {
-    position:relative; width:28vw; max-width:120px; height:28vw; max-height:120px;
-    border:3px dashed #ffffff; border-radius:16px;
-    background:rgba(0,0,0,0.45); backdrop-filter: blur(4px);
-    box-shadow: 0 0 10px rgba(255,255,255,0.3);
-    pointer-events:none;
-  }
-  .slotLabel {
-    position:absolute; top:-24px; left:0; width:100%; text-align:center;
-    color:#fff; font-size:13px; font-weight:800;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-  }
-
-  .card {
-    position:absolute; width:26vw; max-width:110px; height:26vw; max-height:110px;
-    border-radius:14px; background:rgba(255,255,255,0.95);
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 6px 16px rgba(0,0,0,0.35);
-    touch-action:none; z-index:105;
-    pointer-events: auto !important;
-    cursor: grab;
-  }
-  .card img { width:82%; height:82%; object-fit:contain; pointer-events:none; }
-  .card.correct { box-shadow:0 0 0 4px #3fbf7f, 0 6px 16px rgba(0,0,0,0.35); }
-
-  #checkBtn {
-    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-    z-index:102; display:none;
-    background:#fff; color:#3a2410; border:none; border-radius:30px;
-    padding:14px 36px; font-size:16px; font-weight:800;
-    box-shadow:0 6px 18px rgba(0,0,0,0.3);
-    pointer-events: auto !important;
-  }
-
-  #hint {
-    position:fixed; bottom:90px; left:0; width:100%; z-index:101;
-    padding: 10px; color:#fff; text-align:center; pointer-events:none; display:none;
-  }
-  #hint .badge {
-    display:inline-block; background: rgba(0,0,0,0.65);
-    border:2px solid rgba(255,255,255,0.5); border-radius:24px;
-    padding:8px 18px; font-size:13px; font-weight:600; color:#fff;
-  }
-
-  #clearScreen {
-    position:fixed; top:0; left:0; width:100%; height:100%;
-    background: linear-gradient(160deg, #2b8a5f, #1c5e3f); z-index:200;
-    display:none; flex-direction:column; align-items:center; justify-content:center;
+  /* ---- クイズ画面（半透明化） ---- */
+  #quizScreen {
+    background: rgba(20,10,8,0.75); z-index:30;
+    backdrop-filter: blur(4px);
+    flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
-    pointer-events: auto;
   }
-  #clearScreen.show { display:flex; animation: fadeIn 0.5s ease; }
-  #clearScreen .stamp { width:130px; height:130px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:56px; margin-bottom:22px; animation: pop 0.5s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+  #quizScreen h2 { font-size:20px; margin-bottom:20px; font-weight:800; line-height:1.6; }
+  #choices { display:flex; flex-direction:column; gap:12px; width:100%; max-width:320px; }
+  .choiceBtn {
+    background:#fff; color:#5a2a1a; border:3px solid #fff; border-radius:20px;
+    padding:16px; font-size:17px; font-weight:800; box-shadow:0 4px 14px rgba(0,0,0,0.25);
+  }
+  .choiceBtn.wrong { background:#ffd9d9; border-color:#ff8a8a; }
+  .choiceBtn.correct { background:#d6f5e0; border-color:#3fbf7f; }
+  #quizFeedback { margin-top:14px; font-size:15px; min-height:22px; font-weight:700; }
+
+  /* ---- 完了画面 ---- */
+  #clearScreen {
+    background: rgba(28, 94, 63, 0.9); z-index:33;
+    flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  .stamp {
+    width:130px; height:130px; border-radius:50%; background:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:56px; margin-bottom:22px;
+    animation: pop 0.5s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  }
   #clearScreen h2 { font-size:24px; margin-bottom:10px; font-weight:800; }
-  #clearScreen p { font-size:15px; opacity:0.95; max-width:300px; line-height:1.9; }
+  #clearScreen p { font-size:15px; opacity:0.95; max-width:290px; line-height:1.9; }
   @keyframes pop { 0%{transform:scale(0);} 80%{transform:scale(1.15);} 100%{transform:scale(1);} }
-  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 </style>
 </head>
 <body>
@@ -130,7 +88,7 @@
 <a-scene
   mindar-image="imageTargetSrc: ./kagura.mind; autoStart: true; uiScanning: no;"
   color-space="sRGB"
-  renderer="colorManagement: true, physicallyCorrectLights"
+  renderer="colorManagement: true, physicallyCorrectLights, alpha: true"
   vr-mode-ui="enabled: false"
   device-orientation-permission-ui="enabled: false"
 >
@@ -138,210 +96,66 @@
   <a-entity id="target" mindar-image-target="targetIndex: 0"></a-entity>
 </a-scene>
 
-<div id="gameLayer"></div>
-
-<div id="clueBox">
-  おろちくんは、みことくんの みぎに いないよ。<br>
-  ひめちゃんは、いちばん ひだりに いないよ。<br>
-  大蛇(おろち)を たいじする かみさま(みことくん)は、<br>
-  まんなかに たつよ。
+<!-- ① クイズ画面 -->
+<div id="quizScreen" class="screen">
+  <h2>もんだい：<br>庄内神楽（しょうないかぐら）で<br>ゆうめいな まつりは？</h2>
+  <div id="choices">
+    <button class="choiceBtn" data-val="kagura">庄内神楽祭り</button>
+    <button class="choiceBtn" data-val="umi">海祭り</button>
+    <button class="choiceBtn" data-val="yuki">雪祭り</button>
+  </div>
+  <div id="quizFeedback"></div>
 </div>
 
-<div id="slotsArea">
-  <div class="slot" id="slotL"><div class="slotLabel">ひだり</div></div>
-  <div class="slot" id="slotC"><div class="slotLabel">まんなか</div></div>
-  <div class="slot" id="slotR"><div class="slotLabel">みぎ</div></div>
-</div>
-
-<div id="hint">
-  <div class="badge" id="hintText">3にんの カードを 上のわくに ドラッグしてね</div>
-</div>
-
-<button id="checkBtn">これで けってい!</button>
-
-<div id="clearScreen">
-  <div class="stamp">⛩️</div>
-  <h2>せいかい!</h2>
-  <p id="clearText"></p>
+<!-- ② 完了画面 -->
+<div id="clearScreen" class="screen">
+  <div class="stamp">🎭</div>
+  <h2>スタンプ げっと!</h2>
+  <p>庄内神楽の スタンプを<br>手に入れたよ！</p>
 </div>
 
 <script>
 const targetEntity = document.getElementById('target');
 const searchHint = document.getElementById('searchHint');
-const gameLayer = document.getElementById('gameLayer');
-const clueBox = document.getElementById('clueBox');
-const slotsArea = document.getElementById('slotsArea');
-const hint = document.getElementById('hint');
-const hintText = document.getElementById('hintText');
-const checkBtn = document.getElementById('checkBtn');
+const quizScreen = document.getElementById('quizScreen');
 const clearScreen = document.getElementById('clearScreen');
-const clearText = document.getElementById('clearText');
+const choices = document.getElementById('choices');
+const quizFeedback = document.getElementById('quizFeedback');
 
-const CHARACTERS = [
-  { id:'orochi', name:'おろちくん', img:'char_orochi.png', correctSlot:'L' },
-  { id:'mikoto', name:'みことくん', img:'char_mikoto.png', correctSlot:'C' },
-  { id:'hime',   name:'ひめちゃん', img:'char_hime.png',   correctSlot:'R' },
-];
-
-let cards = [];
-let cleared = false;
 let gameStarted = false;
+let answered = false;
 
-function setupGame(){
-  const shuffled = [...CHARACTERS].sort(()=>Math.random()-0.5);
-  const W = window.innerWidth, H = window.innerHeight;
-  const startY = H * 0.68;
-  const positions = [W * 0.18, W * 0.5, W * 0.82];
-
-  shuffled.forEach((ch, i)=>{
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.dataset.id = ch.id;
-    card.style.left = (positions[i] - 50) + 'px';
-    card.style.top = startY + 'px';
-
-    const img = document.createElement('img');
-    img.src = ch.img;
-    card.appendChild(img);
-    gameLayer.appendChild(card);
-    cards.push(card);
-
-    makeDraggable(card);
-  });
+function showScreen(el){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
+  el.classList.add('show');
 }
 
-function makeDraggable(card){
-  let dragging = false;
-  let offsetX = 0, offsetY = 0;
-
-  function start(x, y){
-    dragging = true;
-    const rect = card.getBoundingClientRect();
-    offsetX = x - rect.left;
-    offsetY = y - rect.top;
-    card.style.zIndex = 999;
-  }
-
-  function move(x, y){
-    if (!dragging) return;
-    card.style.left = (x - offsetX) + 'px';
-    card.style.top = (y - offsetY) + 'px';
-  }
-
-  function end(){
-    if (!dragging) return;
-    dragging = false;
-    card.style.zIndex = 105;
-    snapToNearestSlot(card);
-  }
-
-  // --- タッチ操作 ---
-  card.addEventListener('touchstart', e => {
-    e.stopPropagation();
-    const t = e.touches[0];
-    start(t.clientX, t.clientY);
-  }, { passive: false });
-
-  window.addEventListener('touchmove', e => {
-    if (!dragging) return;
-    if (e.cancelable) e.preventDefault();
-    const t = e.touches[0];
-    move(t.clientX, t.clientY);
-  }, { passive: false });
-
-  window.addEventListener('touchend', end);
-
-  // --- マウス操作 ---
-  card.addEventListener('mousedown', e => {
-    e.stopPropagation();
-    start(e.clientX, e.clientY);
-  });
-
-  window.addEventListener('mousemove', e => {
-    if (dragging) move(e.clientX, e.clientY);
-  });
-
-  window.addEventListener('mouseup', end);
-}
-
-function snapToNearestSlot(card){
-  const slots = [document.getElementById('slotL'), document.getElementById('slotC'), document.getElementById('slotR')];
-  const cardRect = card.getBoundingClientRect();
-  const cx = cardRect.left + cardRect.width/2;
-  const cy = cardRect.top + cardRect.height/2;
-
-  let nearest = null, nearestDist = Infinity;
-  slots.forEach(slot=>{
-    const r = slot.getBoundingClientRect();
-    const sx = r.left + r.width/2, sy = r.top + r.height/2;
-    const d = Math.hypot(cx-sx, cy-sy);
-    if (d < nearestDist){ nearestDist = d; nearest = slot; }
-  });
-
-  if (nearest && nearestDist < 160){
-    const occupied = cards.find(c => c!==card && c.dataset.slot === nearest.id);
-    if (occupied){ occupied.dataset.slot = ''; }
-    card.dataset.slot = nearest.id;
-    const r = nearest.getBoundingClientRect();
-    card.style.left = (r.left + r.width/2 - cardRect.width/2) + 'px';
-    card.style.top = (r.top + r.height/2 - cardRect.height/2) + 'px';
-  } else {
-    card.dataset.slot = '';
-  }
-}
-
-checkBtn.addEventListener('click', ()=>{
-  if (cleared) return;
-  const slotMap = { slotL:'L', slotC:'C', slotR:'R' };
-  let allPlaced = true;
-  let allCorrect = true;
-
-  cards.forEach(card=>{
-    const slotId = card.dataset.slot;
-    if (!slotId){ allPlaced = false; return; }
-    const ch = CHARACTERS.find(c => c.id === card.dataset.id);
-    const placedSlotLetter = slotMap[slotId];
-    if (placedSlotLetter === ch.correctSlot){
-      card.classList.add('correct');
-    } else {
-      card.classList.remove('correct');
-      allCorrect = false;
-    }
-  });
-
-  if (!allPlaced){
-    hintText.textContent = '3にん ぜんいん、わくの なかに いれてね';
-    return;
-  }
-
-  if (allCorrect){
-    cleared = true;
-    hintText.textContent = 'せいかい!';
-    setTimeout(()=>{
-      clearText.innerHTML = '庄内神楽(しょうないかぐら)では、<br>大蛇(おろち)を たいじする お話が えんじられるよ。<br>ひだりから おろちくん・みことくん・ひめちゃんの じゅんばん、<br>おぼえたかな?';
-      clearScreen.classList.add('show');
-    }, 700);
-  } else {
-    hintText.textContent = 'ちがう じゅんばんみたい。もういちど ヒントを よもう';
-  }
-});
-
+// ---- マーカー検出 ----
 targetEntity.addEventListener('targetFound', () => {
   searchHint.style.display = 'none';
   if (!gameStarted){
     gameStarted = true;
-    gameLayer.style.display = 'block';
-    clueBox.style.display = 'block';
-    slotsArea.style.display = 'flex'; // flexで中央に3つ綺麗に並べる
-    hint.style.display = 'block';
-    checkBtn.style.display = 'block';
-
-    setupGame();
+    showScreen(quizScreen);
   }
 });
-
 targetEntity.addEventListener('targetLost', () => {
   if (!gameStarted) searchHint.style.display = 'block';
+});
+
+// ---- ① クイズ ----
+choices.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.choiceBtn');
+  if (!btn || answered) return;
+  if (btn.dataset.val === 'kagura'){
+    answered = true;
+    btn.classList.add('correct');
+    quizFeedback.textContent = 'せいかい!';
+    setTimeout(()=> showScreen(clearScreen), 700);
+  } else {
+    btn.classList.add('wrong');
+    quizFeedback.textContent = 'ちがうよ、もういちど かんがえてみよう';
+    setTimeout(()=> btn.classList.remove('wrong'), 700);
+  }
 });
 </script>
 </body>
