@@ -2,20 +2,37 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>スポット5 マーカーAR てんぐのおめん</title>
 
-<!-- A-Frame と MindAR の読み込み -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
-  /* カメラ映像が見えるよう背景を透明化 */
-  html, body { width:100%; height:100%; overflow:hidden; background:transparent;
-    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
+  
+  /* MindARの背景黒を強力に透明化してカメラを表示 */
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background: transparent !important;
+    background-color: transparent !important;
+    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  }
 
-  a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
+  a-scene {
+    position:fixed; top:0; left:0; width:100%; height:100%; z-index:1;
+    background: transparent !important;
+  }
+
+  video {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    z-index: -1 !important;
+  }
 
   .screen { position:fixed; top:0; left:0; width:100%; height:100%; display:none; }
   .screen.show { display:flex; }
@@ -41,7 +58,7 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
 
-  /* ---- クイズ画面（半透明化） ---- */
+  /* ---- クイズ画面（すりガラス風・半透明） ---- */
   #quizScreen {
     background: rgba(20,10,8,0.75); z-index:30;
     backdrop-filter: blur(4px);
@@ -58,9 +75,9 @@
   .choiceBtn.correct { background:#d6f5e0; border-color:#3fbf7f; }
   #quizFeedback { margin-top:14px; font-size:15px; min-height:22px; font-weight:700; }
 
-  /* ---- 天狗登場画面（半透明化） ---- */
+  /* ---- 天狗登場画面 ---- */
   #tenguRevealScreen {
-    background: rgba(214, 92, 60, 0.85); z-index:31;
+    background: linear-gradient(160deg, rgba(255,157,92,0.92), rgba(214,92,60,0.92)); z-index:31;
     backdrop-filter: blur(4px);
     flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
@@ -75,7 +92,7 @@
   }
 
   /* ---- お面合わせ画面 ---- */
-  #maskScreen { background:rgba(0,0,0,0.9); z-index:32; flex-direction:column; }
+  #maskScreen { background:#000; z-index:32; flex-direction:column; }
   #photoWrap { position:relative; flex:1; overflow:hidden; touch-action:none; }
   #selfie { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
   #maskCanvas { position:absolute; top:0; left:0; width:100%; height:100%; }
@@ -101,7 +118,8 @@
 
   /* ---- 完了画面 ---- */
   #clearScreen {
-    background: rgba(28, 94, 63, 0.9); z-index:33;
+    background: linear-gradient(160deg, rgba(43,138,95,0.92), rgba(28,94,63,0.92)); z-index:33;
+    backdrop-filter: blur(4px);
     flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
   }
@@ -126,6 +144,7 @@
   <div class="badge">印刷したマーカーに カメラを むけてね</div>
 </div>
 
+<!-- ★ imageTargetSrc は実際の .mind ファイル名に合わせて変更してください（例: ./tengu.mind） -->
 <a-scene
   mindar-image="imageTargetSrc: ./tengu.mind; autoStart: true; uiScanning: no;"
   color-space="sRGB"
