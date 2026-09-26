@@ -65,7 +65,7 @@
     flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
   }
-  #quizScreen h2 { font-size:20px; margin-bottom:20px; font-weight:800; line-height:1.6; }
+  #quizScreen h2 { font-size:18px; margin-bottom:20px; font-weight:800; line-height:1.6; max-width:340px; }
   #choices { display:flex; flex-direction:column; gap:12px; width:100%; max-width:320px; }
   .choiceBtn {
     background:#fff; color:#5a2a1a; border:3px solid #fff; border-radius:20px;
@@ -144,7 +144,6 @@
   <div class="badge">印刷したマーカーに カメラを むけてね</div>
 </div>
 
-<!-- ★ imageTargetSrc は実際の .mind ファイル名に合わせて変更してください（例: ./tengu.mind） -->
 <a-scene
   mindar-image="imageTargetSrc: ./tengu.mind; autoStart: true; uiScanning: no;"
   color-space="sRGB"
@@ -156,13 +155,13 @@
   <a-entity id="target" mindar-image-target="targetIndex: 0"></a-entity>
 </a-scene>
 
-<!-- ① クイズ画面 -->
+<!-- ① クイズ画面（指定画像の問題文に変更） -->
 <div id="quizScreen" class="screen">
-  <h2>もんだい：<br>由布市が ゆうめいな のは<br>つぎの うち どれ？</h2>
+  <h2>庄内神楽で使われるお面のうち、真っ赤な顔で長い鼻を持つ妖怪・神様はなんでしょう？</h2>
   <div id="choices">
-    <button class="choiceBtn" data-val="onsen">おんせん</button>
-    <button class="choiceBtn" data-val="umi">うみ</button>
-    <button class="choiceBtn" data-val="yuki">ゆきまつり</button>
+    <button class="choiceBtn" data-val="tengu">てんぐ</button>
+    <button class="choiceBtn" data-val="kappa">かっぱ</button>
+    <button class="choiceBtn" data-val="oni">おに</button>
   </div>
   <div id="quizFeedback"></div>
 </div>
@@ -247,11 +246,11 @@ targetEntity.addEventListener('targetLost', () => {
   if (!gameStarted) searchHint.style.display = 'block';
 });
 
-// ---- ① クイズ ----
+// ---- ① クイズ（正解判定を「tengu」に変更） ----
 choices.addEventListener('click', (e)=>{
   const btn = e.target.closest('.choiceBtn');
   if (!btn || answered) return;
-  if (btn.dataset.val === 'onsen'){
+  if (btn.dataset.val === 'tengu'){
     answered = true;
     btn.classList.add('correct');
     quizFeedback.textContent = 'せいかい!';
