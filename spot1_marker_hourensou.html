@@ -177,140 +177,30 @@ let answered = false;
 let gameStarted = false;
 let loopRunning = false;
 
-function resize(){
-  W = window.innerWidth; H = window.innerHeight;
-  canvas.width = W; canvas.height = H;
-  if (plants.length === 0) layoutPlants();
-}
-window.addEventListener('resize', resize);
+// ---- ほうれん草画像の生成（黒背景を自動背景透過処理） ----
+const rawImg = new Image();
+const plantCanvas = document.createElement('canvas');
+const plantCtx = plantCanvas.getContext('2d');
+let plantImgLoaded = false;
 
-function layoutPlants(){
-  plants = [];
-  const cols = 3, rows = 3;
-  const areaTop = H * 0.32;
-  const areaBottom = H * 0.86;
-  const areaLeft = W * 0.15;
-  const areaRight = W * 0.85;
-  const cw = (areaRight - areaLeft) / cols;
-  const rh = (areaBottom - areaTop) / rows;
-  const r = Math.min(cw, rh) * 0.32;
-  for (let row=0; row<rows; row++){
-    for (let col=0; col<cols; col++){
-      const jitterX = (Math.random()-0.5) * cw * 0.25;
-      const jitterY = (Math.random()-0.5) * rh * 0.25;
-      plants.push({
-        x: areaLeft + cw*col + cw/2 + jitterX,
-        y: areaTop + rh*row + rh/2 + jitterY,
-        r: r,
-        pulled: false
-      });
+rawImg.onload = () => {
+  plantCanvas.width = rawImg.width;
+  plantCanvas.height = rawImg.height;
+  plantCtx.drawImage(rawImg, 0, 0);
+  
+  // 黒色ピクセル（背景）を透明化処理
+  const imgData = plantCtx.getImageData(0, 0, rawImg.width, rawImg.height);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] < 20 && data[i+1] < 20 && data[i+2] < 20) {
+      data[i+3] = 0;
     }
   }
-}
-
-function pointerPos(e){ const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
-
-function handleTap(x, y){
-  if (phase !== 'pulling') return;
-  for (const p of plants){
-    if (p.pulled) continue;
-    const dist = Math.hypot(x-p.x, y-p.y);
-    if (dist < p.r * 1.6){
-      p.pulled = true;
-      pulledCount++;
-      pullCountEl.textContent = `ぬいた数：${pulledCount} / ${PULL_TARGET}`;
-      if (pulledCount >= PULL_TARGET){
-        phase = 'quiz';
-        hintText.textContent = 'ぬいたあと(あな)は いくつ かな？';
-        setTimeout(()=>{ choicesBox.classList.add('show'); }, 500);
-      } else {
-        hintText.textContent = 'あと ' + (PULL_TARGET - pulledCount) + '束 ひっぱろう';
-      }
-      return;
-    }
-  }
-}
-
-canvas.addEventListener('touchstart', e=>{ const p=pointerPos(e); handleTap(p.x,p.y); }, {passive:true});
-canvas.addEventListener('mousedown', e=>{ handleTap(e.clientX,e.clientY); });
-
-choicesBox.addEventListener('click', (e)=>{
-  const btn = e.target.closest('.choiceBtn');
-  if (!btn || answered) return;
-  const val = parseInt(btn.dataset.val, 10);
-  if (val === 3){
-    answered = true;
-    btn.classList.add('correct');
-    hintText.textContent = 'せいかい!';
-    setTimeout(()=>{
-      phase = 'done';
-      clearText.innerHTML = 'ぬいた"あと"（あな）は<br>ちゃんと <b>3つ</b> のこってるね!<br>由布市の 湯布院地域は すずしい きこうを いかして、<br>ほうれんそうの さいばいが さかんなんだよ。';
-      clearScreen.classList.add('show');
-    }, 700);
-  } else {
-    btn.classList.add('wrong');
-    hintText.textContent = 'ちがうよ、もういちど かんがえてみよう';
-    setTimeout(()=>{ btn.classList.remove('wrong'); }, 700);
-  }
-});
-
-function drawPlant(p){
-  ctx.save();
-  ctx.translate(p.x, p.y);
-  if (p.pulled){
-    ctx.fillStyle = 'rgba(40,26,14,0.8)';
-    ctx.beginPath();
-    ctx.ellipse(0, p.r*0.3, p.r*0.9, p.r*0.45, 0, 0, Math.PI*2);
-    ctx.fill();
-  } else {
-    ctx.font = `${p.r*2.1}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0,0,0,0.4)';
-    ctx.shadowBlur = 10;
-    ctx.fillText('🥬', 0, 0);
-  }
-  ctx.restore();
-}
-
-function drawGuideRing(p){
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, p.r*1.6, 0, Math.PI*2);
-  ctx.strokeStyle = `rgba(120,255,150,${0.5 + 0.3*Math.sin(Date.now()/300)})`;
-  ctx.lineWidth = 3;
-  ctx.setLineDash([8,8]);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function loop(){
-  if (!loopRunning) return;
-  ctx.clearRect(0,0,W,H);
-  for (const p of plants){
-    if (!p.pulled && phase === 'pulling') drawGuideRing(p);
-    drawPlant(p);
-  }
-  requestAnimationFrame(loop);
-}
-
-// ---- マーカー検出イベント ----
-targetEntity.addEventListener('targetFound', () => {
-  searchHint.style.display = 'none';
-  if (!gameStarted){
-    gameStarted = true;
-    resize();
-    gameLayer.style.display = 'block';
-    questionBox.style.display = 'block';
-    hint.style.display = 'block';
-    loopRunning = true;
-    requestAnimationFrame(loop);
-  }
-});
-targetEntity.addEventListener('targetLost', () => {
-  // 一度見つけたらゲームは継続表示（マーカーを外しても遊べるように）
-  if (!gameStarted) searchHint.style.display = 'block';
-});
+  plantCtx.putImageData(imgData, 0, 0);
+  plantImgLoaded = true;
+};
+// お送りいただいたほうれん草画像データ
+rawImg.src = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARERER4RHGQaG2RnURNRZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2P/wAARCAEgASADASIAAhEBAxEB/8QAGwAAAgMBAQEAAAAAAAAAAAAAAAQCAwUGAQf/xAA5EAACAQMCBAQEBAUEAgMAAAAAAQIDESEEMUFRYXGBBRKRoSKx0fATUmLBFBUy4fFCcoIGYyRDwv/aAAa0A0A3A0A0AnfA9AnfBA8AAd8ADfAA3wAO9iIA3wAnIADiAAMACeAHfA/MB3wPgAd8ACeAHfAAngfQA2AnIAnIAnIADiAAMACcA/MB3wPgAd8ADiANwAnIAnIAnIADcACeADu/MB3wPgAByLgAOIADcAANv1AnIn/wA4AnIn/wA4AcT9wAOJ+4AHIn/AM4Acifv6AC3IgAD3A3An/8AOAEByAn5oPgAd8S9/QAd8S9xAnIAnIAnIAnIB3wPgAd8S8/QAC3In7+gAF8fMB3xL39AC3AnIn/zgBHIn7+gAd8S/wC2AHIn7+gAF8fMB3AnIn/zgAcifv6ACuAn5oAnAnIn/zgBH5o/8AHIB+aPgAByL39AALciAA3AANx/2An98ADiAnIADcAD3AN/fAAndS9wDu/MB3xL39AC3InIBOQAnIAnIADiANwAN8AAMAfEACeADsAHfACci4AG4AnIn7+gAnIn/zgA43An/8AOAHInInIAnIAnIAnInIBOQAnIADu/MB3wPgAnIAnIBOQAn/zgBDxPyAnIn7+gAcf1AA3A/f0AHcg3IAnIAnIAnIADiAAn/zgA43InInInIInIAD3AA3An5oAn54eYBv44/MAndS9/QAd/PHzAnIn7+gAcj9xI4mAd8CcnmABvyByAHInIInIBv4A/MB3xP3AnIn73AB3xAnIA3wAnIn/zgBHIAAN8SADvIn7wAnIn78/QAC3/vABOQIn5oeYB388Pn54gG+JAn5oAJySByByA/MB3InIAnIB4mAd8In/zgByJInI/f3AA43An98S4BHIBInIAnIByL8X/AHxPgAnd5PyByAHInIInIAnInInInIBOQInInInIAnIByfvxPgAnkByByJIn/wA4InIBOQByJ/9wAJ3/AEADcAnIByJ/9wAnIn/zgCckg3JADuCckByPInInInIn5oAAN/HHzAnd/eAJ/fInIBOQByAnI/fACv4A7InIIn5oPgByAA43AnIIn/3AA7+AByAnInIBOQAnInIBv4AnIBvyByAAnd/MBvyAnInI/OAnIAByJAnInIBOQInIInInInIAHInIA4InIByInIInInInIByAnIADcI3wByLInIByJByAA4ACcgIInIByAnInIBOQAByL/vAB3UADfADuADsAnIADvyA/MA3Ig422sAANvCgA35AnIn/zgAb3AA4gInIn/zgAcifv6ADckInIA3xAB3/eIByByByInInIAByAA3/uAG4AHIn/zgAnIADc An In IIn IADc ACe ADkAcf 0AG/ AHIn fACcn5 oAAN8 AInIn In In IIn IB3 In IByJIn IB+ eIn IAByIn IBInIn/zgAd8ACeADkByIn IInIn In IBIn IB/ fE/ A/MAdyByIn In IAIn InIn IBvyByByJByIn IAByIn IBvyIn IByJIn/3AnIBOQA3/uAOQAInIInIB38ADiABvxA/ MAD/fIn /8A4In In IIn IB3/ AHIn IB3 InIn InIBv4AOQByAA4/ AIn /zgBHIn/3AAByIn In IBvyByJInIn AByJAn IADvyAJ39ABvyByA4AnIAByByAnIInInIIn In IA43ADvInIAByIn In IA3ByJ52AnIA4gAD3AnIByACeADv InIAHInIn /3InIA ByBy In IBvyA/MAn InIn In IB43ADcInInIAn/zgIInIADckg3JAAngByAO5BvyByByAHInIBvyAIn In IInIA4gInIByAA33IgIn In/zgAd8SAnIBvyByAA8ADiByA/ NIn/zgAn /zgCcnIn IIn IByJAn/zgIInIBOQA3wPgAbgAn/zgBH In IByInIB3xP3AByByJByInIBIn IByAAByByAnIBvyJ4ByByAnIInIAD/AHIBOQAnIn IAD/AHIByAHIAD3IgI3xInInIIn/zgIn IInIn IA3xPgAd/fAAnInAnIn IB4AnIByIn AAN8 T4ByADsAH/fAANwI3wByAn/zgAn/zgADcInIAn InInIByIn IAn IBvyJAn IByAAHIn/3ACckgIn /fAnIA3kAnIAXIn IIn InInIInIADvyAnIn IA4InIAn IBvyAnIA3/uByByAAngAHIAHInIn /3AAHIA4AnIByAHInIn In IAIn InIAD/AIn IBIn/zgIn "
 </script>
 </body>
 </html>
