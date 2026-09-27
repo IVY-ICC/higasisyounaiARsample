@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>スポット9 マーカーAR ハートの いし</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
+
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background: transparent !important;
+    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  }
+  a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; background: transparent !important; }
+  video {
+    position: fixed !important; top:0 !important; left:0 !important;
+    width:100% !important; height:100% !important;
+    object-fit: cover !important; z-index:-1 !important;
+  }
+
+  #searchHint {
+    position:fixed; bottom:0; left:0; width:100%; z-index:20;
+    padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0,0,0,0.65));
+    color:#fff; text-align:center; pointer-events:none;
+  }
+  #searchHint .badge {
+    display:inline-block; background: rgba(0,0,0,0.4);
+    border:2px solid rgba(255,255,255,0.6); border-radius:24px;
+    padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
+  }
+
+  #ui {
+    position:fixed; top:0; left:0; width:100%; z-index:20;
+    padding: 14px 18px; padding-top: max(14px, env(safe-area-inset-top));
+    background: linear-gradient(rgba(0,0,0,0.6), transparent);
+    color:#fff; pointer-events:none;
+  }
+  #ui h1 { font-size:16px; font-weight:700; }
+  #ui p { font-size:12px; opacity:0.85; margin-top:2px; }
+
+  #gameLayer { position:fixed; top:0; left:0; width:100%; height:100%; z-index:30; display:none; }
+  #stoneCanvas { position:fixed; top:0; left:0; width:100%; height:100%; touch-action:none; z-index:30; }
+
+  #clueBox {
+    position:fixed; top:70px; left:50%; transform:translateX(-50%);
+    z-index:31; width:90%; max-width:380px; display:none;
+    background:rgba(255,255,255,0.92); color:#4a3a10; border-radius:16px;
+    padding:14px 18px; text-align:center; font-weight:700; font-size:15px;
+    line-height:1.7; box-shadow:0 6px 20px rgba(0,0,0,0.3); backdrop-filter: blur(4px);
+  }
+
+  #hint {
+    position:fixed; bottom:0; left:0; width:100%; z-index:31;
+    padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0,0,0,0.6));
+    color:#fff; text-align:center; pointer-events:none; display:none;
+  }
+  #hint .badge {
+    display:inline-block; background: rgba(0,0,0,0.4);
+    border:2px solid rgba(255,255,255,0.5); border-radius:24px;
+    padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
+  }
+
+  #clearScreen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background: rgba(196, 60, 90, 0.92); z-index:40; backdrop-filter: blur(4px);
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; text-align:center; padding:26px;
+  }
+  #clearScreen.show { display:flex; animation: fadeIn 0.5s ease; }
+  #clearScreen .stamp { width:130px; height:130px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:56px; margin-bottom:22px; animation: pop 0.5s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+  #clearScreen h2 { font-size:24px; margin-bottom:10px; font-weight:800; }
+  #clearScreen p { font-size:15px; opacity:0.95; max-width:290px; line-height:1.9; }
+  @keyframes pop { 0%{transform:scale(0);} 80%{transform:scale(1.15);} 100%{transform:scale(1);} }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>由布市ARスタンプラリー</h1>
+  <p>スポット9・ハートの いし</p>
+</div>
+
+<div id="searchHint">
+  <div class="badge">印刷したマーカーに カメラを むけてね</div>
+</div>
+
+<!-- ★ imageTargetSrc は実際の.mindファイル名に書き換えてください -->
+<a-scene
+  mindar-image="imageTargetSrc: ./heart.mind; autoStart: true; uiScanning: no;"
+  color-space="sRGB"
+  renderer="colorManagement: true, physicallyCorrectLights, alpha: true"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
+>
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-entity id="target" mindar-image-target="targetIndex: 0"></a-entity>
+</a-scene>
+
+<div id="gameLayer">
+  <canvas id="stoneCanvas"></canvas>
+</div>
+
+<div id="clueBox">
+  石畳(いしだたみ)の どこかに、<br>
+  「ハートの かたちの いし」が かくれているよ。<br>
+  さがして タップしてみよう!
+</div>
+
+<div id="hint">
+  <div class="badge" id="hintText">がめんを タップして さがそう</div>
+</div>
+
+<div id="clearScreen">
+  <div class="stamp">💗</div>
+  <h2>みつけた!</h2>
+  <p id="clearText"></p>
+</div>
+
+<script>
+const targetEntity = document.getElementById('target');
+const searchHint = document.getElementById('searchHint');
+const gameLayer = document.getElementById('gameLayer');
+const canvas = document.getElementById('stoneCanvas');
+const ctx = canvas.getContext('2d');
+const clueBox = document.getElementById('clueBox');
+const hint = document.getElementById('hint');
+const hintText = document.getElementById('hintText');
+const clearScreen = document.getElementById('clearScreen');
+const clearText = document.getElementById('clearText');
+
+let W, H;
+let stones = [];
+let heartStone = null;
+let found = false;
+let gameStarted = false;
+let loopRunning = false;
+let missCount = 0;
+
+function resize(){
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+  layoutStones();
+}
+window.addEventListener('resize', resize);
+
+// 不規則な石畳をランダムに敷き詰める。1つだけハート型にする。
+function layoutStones(){
+  stones = [];
+  const cols = 4, rows = 6;
+  const areaTop = H*0.22, areaBottom = H*0.9;
+  const areaLeft = W*0.06, areaRight = W*0.94;
+  const cw = (areaRight-areaLeft)/cols, ch = (areaBottom-areaTop)/rows;
+
+  const heartRow = 1 + Math.floor(Math.random()*(rows-2));
+  const heartCol = Math.floor(Math.random()*cols);
+
+  for (let r=0; r<rows; r++){
+    for (let c=0; c<cols; c++){
+      const cx = areaLeft + cw*c + cw/2 + (Math.random()-0.5)*cw*0.3;
+      const cy = areaTop + ch*r + ch/2 + (Math.random()-0.5)*ch*0.3;
+      const size = Math.min(cw,ch)*0.42;
+      const isHeart = (r===heartRow && c===heartCol);
+      const stone = { x:cx, y:cy, size, isHeart, shade: Math.floor(Math.random()*30)-15 };
+      stones.push(stone);
+      if (isHeart) heartStone = stone;
+    }
+  }
+}
+
+function drawStonePolygon(s){
+  const n = 6;
+  ctx.beginPath();
+  for (let i=0;i<n;i++){
+    const ang = (i/n)*Math.PI*2 + s.seedAngle;
+    const r = s.size * (0.85 + 0.15*Math.sin(i*2 + s.size));
+    const x = s.x + Math.cos(ang)*r;
+    const y = s.y + Math.sin(ang)*r;
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  const base = 150 + s.shade;
+  ctx.fillStyle = `rgb(${base},${base-5},${base-15})`;
+  ctx.strokeStyle = 'rgba(90,85,75,0.7)';
+  ctx.lineWidth = 3;
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawHeartPath(cx, cy, size){
+  ctx.beginPath();
+  const topCurveHeight = size * 0.3;
+  ctx.moveTo(cx, cy + topCurveHeight);
+  ctx.bezierCurveTo(cx, cy, cx - size/2, cy, cx - size/2, cy + topCurveHeight);
+  ctx.bezierCurveTo(cx - size/2, cy + (size+topCurveHeight)/2, cx, cy + (size+topCurveHeight)/1.3, cx, cy + size);
+  ctx.bezierCurveTo(cx, cy + (size+topCurveHeight)/1.3, cx + size/2, cy + (size+topCurveHeight)/2, cx + size/2, cy + topCurveHeight);
+  ctx.bezierCurveTo(cx + size/2, cy, cx, cy, cx, cy + topCurveHeight);
+  ctx.closePath();
+}
+
+function pointerPos(e){ const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
+
+function handleTap(x, y){
+  if (found || !heartStone) return;
+  const dist = Math.hypot(x - heartStone.x, y - heartStone.y);
+  if (dist < heartStone.size * 1.1){
+    found = true;
+    hintText.textContent = 'みつけた!';
+    setTimeout(()=>{
+      clearText.innerHTML = '湯の坪街道(ゆのつぼかいどう)の 石畳には、<br>さがすと ハートの かたちの いしが かくれているよ。<br>みつけると しあわせに なれるかも?';
+      clearScreen.classList.add('show');
+    }, 700);
+  } else {
+    missCount++;
+    if (missCount % 3 === 0) hintText.textContent = 'もっと よく さがしてみよう';
+  }
+}
+
+canvas.addEventListener('touchstart', e=>{ const p=pointerPos(e); handleTap(p.x,p.y); }, {passive:true});
+canvas.addEventListener('mousedown', e=>{ handleTap(e.clientX,e.clientY); });
+
+function loop(){
+  if (!loopRunning) return;
+  ctx.clearRect(0,0,W,H);
+  stones.forEach(s=>{
+    if (!s.seedAngle) s.seedAngle = Math.random()*Math.PI;
+    if (s.isHeart && found){
+      drawHeartPath(s.x, s.y, s.size*1.3);
+      ctx.fillStyle = '#e0455f';
+      ctx.shadowColor = 'rgba(224,69,95,0.8)';
+      ctx.shadowBlur = 20;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else {
+      drawStonePolygon(s);
+    }
+  });
+  requestAnimationFrame(loop);
+}
+
+targetEntity.addEventListener('targetFound', () => {
+  searchHint.style.display = 'none';
+  if (!gameStarted){
+    gameStarted = true;
+    resize();
+    gameLayer.style.display = 'block';
+    clueBox.style.display = 'block';
+    hint.style.display = 'block';
+    loopRunning = true;
+    requestAnimationFrame(loop);
+  }
+});
+targetEntity.addEventListener('targetLost', () => {
+  if (!gameStarted) searchHint.style.display = 'block';
+});
+</script>
+</body>
+</html>
