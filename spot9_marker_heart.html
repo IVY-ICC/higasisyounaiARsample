@@ -151,7 +151,6 @@ function resize(){
 }
 window.addEventListener('resize', resize);
 
-// 不規則な石畳をランダムに敷き詰める。1つだけハート型にする。
 function layoutStones(){
   stones = [];
   const cols = 4, rows = 6;
@@ -166,7 +165,7 @@ function layoutStones(){
     for (let c=0; c<cols; c++){
       const cx = areaLeft + cw*c + cw/2 + (Math.random()-0.5)*cw*0.3;
       const cy = areaTop + ch*r + ch/2 + (Math.random()-0.5)*ch*0.3;
-      const size = Math.min(cw,ch)*0.42;
+      const size = Math.min(cw,ch)*0.45;
       const isHeart = (r===heartRow && c===heartCol);
       const stone = { x:cx, y:cy, size, isHeart, shade: Math.floor(Math.random()*30)-15 };
       stones.push(stone);
@@ -197,11 +196,12 @@ function drawStonePolygon(s){
 function drawHeartPath(cx, cy, size){
   ctx.beginPath();
   const topCurveHeight = size * 0.3;
-  ctx.moveTo(cx, cy + topCurveHeight);
-  ctx.bezierCurveTo(cx, cy, cx - size/2, cy, cx - size/2, cy + topCurveHeight);
-  ctx.bezierCurveTo(cx - size/2, cy + (size+topCurveHeight)/2, cx, cy + (size+topCurveHeight)/1.3, cx, cy + size);
-  ctx.bezierCurveTo(cx, cy + (size+topCurveHeight)/1.3, cx + size/2, cy + (size+topCurveHeight)/2, cx + size/2, cy + topCurveHeight);
-  ctx.bezierCurveTo(cx + size/2, cy, cx, cy, cx, cy + topCurveHeight);
+  const hy = cy - size * 0.4;
+  ctx.moveTo(cx, hy + topCurveHeight);
+  ctx.bezierCurveTo(cx, hy, cx - size/2, hy, cx - size/2, hy + topCurveHeight);
+  ctx.bezierCurveTo(cx - size/2, hy + (size+topCurveHeight)/2, cx, hy + (size+topCurveHeight)/1.3, cx, hy + size);
+  ctx.bezierCurveTo(cx, hy + (size+topCurveHeight)/1.3, cx + size/2, hy + (size+topCurveHeight)/2, cx + size/2, hy + topCurveHeight);
+  ctx.bezierCurveTo(cx + size/2, hy, cx, hy, cx, hy + topCurveHeight);
   ctx.closePath();
 }
 
@@ -210,7 +210,7 @@ function pointerPos(e){ const t = e.touches ? e.touches[0] : e; return { x: t.cl
 function handleTap(x, y){
   if (found || !heartStone) return;
   const dist = Math.hypot(x - heartStone.x, y - heartStone.y);
-  if (dist < heartStone.size * 1.1){
+  if (dist < heartStone.size * 1.5){
     found = true;
     hintText.textContent = 'みつけた!';
     setTimeout(()=>{
@@ -231,13 +231,22 @@ function loop(){
   ctx.clearRect(0,0,W,H);
   stones.forEach(s=>{
     if (!s.seedAngle) s.seedAngle = Math.random()*Math.PI;
-    if (s.isHeart && found){
+    if (s.isHeart){
       drawHeartPath(s.x, s.y, s.size*1.3);
-      ctx.fillStyle = '#e0455f';
-      ctx.shadowColor = 'rgba(224,69,95,0.8)';
-      ctx.shadowBlur = 20;
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      if (found){
+        ctx.fillStyle = '#e0455f';
+        ctx.shadowColor = 'rgba(224,69,95,0.8)';
+        ctx.shadowBlur = 20;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        const base = 150 + s.shade;
+        ctx.fillStyle = `rgb(${base},${base-5},${base-15})`;
+        ctx.strokeStyle = 'rgba(90,85,75,0.7)';
+        ctx.lineWidth = 3;
+        ctx.fill();
+        ctx.stroke();
+      }
     } else {
       drawStonePolygon(s);
     }
