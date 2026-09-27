@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>スポット1 マーカーAR ほうれんそうばたけ</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
@@ -10,28 +10,27 @@
 
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; user-select:none; }
-  html, body {
-    width:100%; height:100%; overflow:hidden;
-    background: #000 !important;
-    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
-  }
+  html, body { width:100%; height:100%; overflow:hidden; background: transparent !important;
+    font-family: "UD Digi Kyokasho NP-R", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif; }
 
-  a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
+  /* MindARのカメラ映像＋3D描画レイヤーはそのまま背景として使う */
+  a-scene { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; background: transparent !important; }
   video {
     position: fixed !important; top:0 !important; left:0 !important;
     width:100% !important; height:100% !important;
-    object-fit: cover !important; z-index:0 !important;
+    object-fit: cover !important; z-index:-1 !important;
   }
 
+  /* ---- マーカー未検出時の案内 ---- */
   #searchHint {
     position:fixed; bottom:0; left:0; width:100%; z-index:20;
     padding: 22px; padding-bottom: max(26px, env(safe-area-inset-bottom));
-    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    background: linear-gradient(transparent, rgba(0,0,0,0.65));
     color:#fff; text-align:center; pointer-events:none;
   }
   #searchHint .badge {
-    display:inline-block; background: rgba(0,0,0,0.5);
-    border:2px solid rgba(255,255,255,0.6); border-radius:24px;
+    display:inline-block; background: rgba(255,255,255,0.18);
+    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
     padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
   }
 
@@ -44,6 +43,7 @@
   #ui h1 { font-size:16px; font-weight:700; }
   #ui p { font-size:12px; opacity:0.85; margin-top:4px; }
 
+  /* ---- ゲーム用オーバーレイ（マーカー検出後に表示） ---- */
   #gameLayer { position:fixed; top:0; left:0; width:100%; height:100%; z-index:30; display:none; }
   #gameCanvas { position:fixed; top:0; left:0; width:100%; height:100%; touch-action:none; }
 
@@ -51,10 +51,10 @@
     position:fixed; top:70px; left:50%; transform:translateX(-50%);
     z-index:31; width:90%; max-width:380px; display:none;
     background:rgba(255,255,255,0.95); color:#1f3a24; border-radius:18px;
-    padding:16px 18px; text-align:center; font-weight:700; font-size:16px;
+    padding:16px 18px; text-align:center; font-weight:700; font-size:17px;
     line-height:1.6; box-shadow:0 6px 20px rgba(0,0,0,0.3);
   }
-  #pullCount { color:#2e8b47; font-size:19px; display:block; margin-top:4px; }
+  #pullCount { color:#2e8b47; font-size:20px; }
 
   #hint {
     position:fixed; bottom:0; left:0; width:100%; z-index:31;
@@ -63,8 +63,8 @@
     color:#fff; text-align:center; pointer-events:none; display:none;
   }
   #hint .badge {
-    display:inline-block; background: rgba(0,0,0,0.5);
-    border:2px solid rgba(255,255,255,0.6); border-radius:24px;
+    display:inline-block; background: rgba(255,255,255,0.18);
+    border:2px solid rgba(255,255,255,0.4); border-radius:24px;
     padding:10px 22px; font-size:16px; font-weight:600; backdrop-filter: blur(6px);
   }
 
@@ -72,15 +72,16 @@
     position:fixed; bottom:0; left:0; width:100%; z-index:32;
     padding: 18px; padding-bottom: max(24px, env(safe-area-inset-bottom));
     display:none; gap:12px; flex-direction:column;
-    background: linear-gradient(transparent, rgba(0,0,0,0.8) 30%);
+    background: linear-gradient(transparent, rgba(0,0,0,0.75) 30%);
   }
   #choices.show { display:flex; }
   .choiceBtn {
-    background:#fff; color:#1f3a24; border:none; border-radius:16px;
-    padding:16px; font-size:18px; font-weight:800;
+    background:#fff; color:#1f3a24; border:3px solid #fff; border-radius:20px;
+    padding:16px; font-size:19px; font-weight:800;
     box-shadow:0 4px 14px rgba(0,0,0,0.25);
   }
-  .choiceBtn.wrong { background:#ffe3e3; color:#d93025; }
+  .choiceBtn.wrong { background:#ffe3e3; border-color:#ff8a8a; }
+  .choiceBtn.correct { background:#d6f5e0; border-color:#3fbf7f; }
 
   #clearScreen {
     position:fixed; top:0; left:0; width:100%; height:100%;
@@ -88,14 +89,17 @@
     display:none; flex-direction:column; align-items:center; justify-content:center;
     color:#fff; text-align:center; padding:26px;
   }
-  #clearScreen.show { display:flex; animation: fadeIn 0.4s ease; }
+  #clearScreen.show { display:flex; animation: fadeIn 0.5s ease; }
   #clearScreen .stamp {
-    width:130px; height:130px; border-radius:50%;
+    width:140px; height:140px; border-radius:50%;
     background:#fff; display:flex; align-items:center; justify-content:center;
-    font-size:60px; margin-bottom:20px; box-shadow:0 8px 24px rgba(0,0,0,0.3);
+    font-size:64px; margin-bottom:22px;
+    animation: pop 0.5s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:0 8px 24px rgba(0,0,0,0.3);
   }
-  #clearScreen h2 { font-size:24px; margin-bottom:10px; font-weight:800; }
-  #clearScreen p { font-size:15px; opacity:0.95; max-width:290px; line-height:1.8; }
+  #clearScreen h2 { font-size:26px; margin-bottom:10px; font-weight:800; }
+  #clearScreen p { font-size:15px; opacity:0.95; max-width:290px; line-height:1.9; }
+  @keyframes pop { 0%{transform:scale(0);} 80%{transform:scale(1.15);} 100%{transform:scale(1);} }
   @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 </style>
 </head>
@@ -107,11 +111,12 @@
 </div>
 
 <div id="searchHint">
-  <div class="badge" id="searchMsg">印刷したマーカーに カメラを むけてね</div>
+  <div class="badge">印刷したマーカーに カメラを むけてね</div>
 </div>
 
+<!-- MindARのカメラ映像＋マーカー認識 -->
 <a-scene
-  mindar-image="imageTargetSrc: ./hourenso.mind; autoStart: true; uiScanning: no;"
+  mindar-image="imageTargetSrc: ./hourensou.mind; autoStart: true; uiScanning: no;"
   color-space="sRGB"
   renderer="colorManagement: true, physicallyCorrectLights, alpha: true"
   vr-mode-ui="enabled: false"
@@ -121,18 +126,19 @@
   <a-entity id="target" mindar-image-target="targetIndex: 0"></a-entity>
 </a-scene>
 
+<!-- マーカー検出後に表示するゲーム画面 -->
 <div id="gameLayer">
   <canvas id="gameCanvas"></canvas>
 </div>
 
 <div id="questionBox">
   ほうれんそうを 3束 しゅうかくしよう。<br>
-  うえに ひっぱって ぬいてね!
+  3束 ゆびで ひっぱって ぬいてみよう!<br>
   <span id="pullCount">ぬいた数：0 / 3</span>
 </div>
 
 <div id="hint">
-  <div class="badge" id="hintText">ほうれんそうを 上にひっぱろう</div>
+  <div class="badge" id="hintText">ほうれんそうを タップして ひっぱろう</div>
 </div>
 
 <div id="choices">
@@ -150,12 +156,13 @@
 <script>
 const targetEntity = document.getElementById('target');
 const searchHint = document.getElementById('searchHint');
-const searchMsg = document.getElementById('searchMsg');
 const gameLayer = document.getElementById('gameLayer');
 const questionBox = document.getElementById('questionBox');
 const hint = document.getElementById('hint');
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const hintText = document.getElementById('hintText');
 const pullCountEl = document.getElementById('pullCount');
 const choicesBox = document.getElementById('choices');
 const clearScreen = document.getElementById('clearScreen');
@@ -168,160 +175,141 @@ const PULL_TARGET = 3;
 let phase = 'pulling';
 let answered = false;
 let gameStarted = false;
+let loopRunning = false;
 
 function resize(){
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = W;
-  canvas.height = H;
-  if(plants.length === 0) initPlants();
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+  if (plants.length === 0) layoutPlants();
 }
-window.addEventListener('resize', () => {
-  resize();
-  const scene = document.querySelector('a-scene');
-  if (scene && scene.resize) scene.resize();
-});
+window.addEventListener('resize', resize);
 
-function initPlants(){
+function layoutPlants(){
   plants = [];
-  const positions = [
-    {x:0.25, y:0.45}, {x:0.5, y:0.42}, {x:0.75, y:0.45},
-    {x:0.35, y:0.65}, {x:0.65, y:0.65}
-  ];
-  positions.forEach(pos => {
-    plants.push({
-      x: W * pos.x,
-      y: H * pos.y,
-      size: Math.min(W, H) * 0.18,
-      pulled: false,
-      offsetY: 0
-    });
-  });
-}
-
-let activePlant = null;
-let startY = 0;
-
-function pointerPos(e){
-  const t = e.touches ? e.touches[0] : e;
-  return { x: t.clientX, y: t.clientY };
-}
-
-function handleStart(x, y){
-  if(phase !== 'pulling') return;
-  plants.forEach(p => {
-    if(!p.pulled && Math.hypot(x - p.x, y - (p.y + p.offsetY)) < p.size * 1.2){
-      activePlant = p;
-      startY = y;
+  const cols = 3, rows = 3;
+  const areaTop = H * 0.32;
+  const areaBottom = H * 0.86;
+  const areaLeft = W * 0.15;
+  const areaRight = W * 0.85;
+  const cw = (areaRight - areaLeft) / cols;
+  const rh = (areaBottom - areaTop) / rows;
+  const r = Math.min(cw, rh) * 0.32;
+  for (let row=0; row<rows; row++){
+    for (let col=0; col<cols; col++){
+      const jitterX = (Math.random()-0.5) * cw * 0.25;
+      const jitterY = (Math.random()-0.5) * rh * 0.25;
+      plants.push({
+        x: areaLeft + cw*col + cw/2 + jitterX,
+        y: areaTop + rh*row + rh/2 + jitterY,
+        r: r,
+        pulled: false
+      });
     }
-  });
+  }
 }
 
-function handleMove(y){
-  if(!activePlant) return;
-  const dy = startY - y;
-  if(dy > 0){
-    activePlant.offsetY = -dy;
-    if(dy > 70){
-      activePlant.pulled = true;
-      activePlant = null;
+function pointerPos(e){ const t = e.touches ? e.touches[0] : e; return { x: t.clientX, y: t.clientY }; }
+
+function handleTap(x, y){
+  if (phase !== 'pulling') return;
+  for (const p of plants){
+    if (p.pulled) continue;
+    const dist = Math.hypot(x-p.x, y-p.y);
+    if (dist < p.r * 1.6){
+      p.pulled = true;
       pulledCount++;
       pullCountEl.textContent = `ぬいた数：${pulledCount} / ${PULL_TARGET}`;
-      
-      if(pulledCount >= PULL_TARGET){
+      if (pulledCount >= PULL_TARGET){
         phase = 'quiz';
-        setTimeout(() => {
-          questionBox.innerHTML = 'ほうれんそうは 1ねんに<br>なんかい しゅうかくできるかな？';
-          hint.style.display = 'none';
-          choicesBox.classList.add('show');
-        }, 400);
+        hintText.textContent = 'ぬいたあと(あな)は いくつ かな？';
+        setTimeout(()=>{ choicesBox.classList.add('show'); }, 500);
+      } else {
+        hintText.textContent = 'あと ' + (PULL_TARGET - pulledCount) + '束 ひっぱろう';
       }
+      return;
     }
   }
 }
 
-function handleEnd(){
-  if(activePlant){
-    activePlant.offsetY = 0;
-    activePlant = null;
+canvas.addEventListener('touchstart', e=>{ const p=pointerPos(e); handleTap(p.x,p.y); }, {passive:true});
+canvas.addEventListener('mousedown', e=>{ handleTap(e.clientX,e.clientY); });
+
+choicesBox.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.choiceBtn');
+  if (!btn || answered) return;
+  const val = parseInt(btn.dataset.val, 10);
+  if (val === 3){
+    answered = true;
+    btn.classList.add('correct');
+    hintText.textContent = 'せいかい!';
+    setTimeout(()=>{
+      phase = 'done';
+      clearText.innerHTML = 'ぬいた"あと"（あな）は<br>ちゃんと <b>3つ</b> のこってるね!<br>由布市の 湯布院地域は すずしい きこうを いかして、<br>ほうれんそうの さいばいが さかんなんだよ。';
+      clearScreen.classList.add('show');
+    }, 700);
+  } else {
+    btn.classList.add('wrong');
+    hintText.textContent = 'ちがうよ、もういちど かんがえてみよう';
+    setTimeout(()=>{ btn.classList.remove('wrong'); }, 700);
   }
-}
+});
 
-canvas.addEventListener('touchstart', e => { const p = pointerPos(e); handleStart(p.x, p.y); }, {passive:true});
-canvas.addEventListener('touchmove', e => { const p = pointerPos(e); handleMove(p.y); }, {passive:true});
-canvas.addEventListener('touchend', handleEnd);
-canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
-canvas.addEventListener('mousemove', e => { if(e.buttons === 1) handleMove(e.clientY); });
-canvas.addEventListener('mouseup', handleEnd);
-
-function drawSpinach(x, y, size){
+function drawPlant(p){
   ctx.save();
-  ctx.translate(x, y);
-  
-  // 根元
-  ctx.fillStyle = '#e8f5e9';
-  ctx.beginPath();
-  ctx.arc(0, size*0.3, size*0.15, 0, Math.PI*2);
-  ctx.fill();
-
-  // 葉っぱ
-  ctx.fillStyle = '#2e7d32';
-  for(let i=0; i<5; i++){
-    const angle = (i - 2) * 0.4 - Math.PI/2;
+  ctx.translate(p.x, p.y);
+  if (p.pulled){
+    ctx.fillStyle = 'rgba(40,26,14,0.8)';
     ctx.beginPath();
-    ctx.ellipse(Math.cos(angle)*size*0.3, Math.sin(angle)*size*0.3, size*0.25, size*0.45, angle + Math.PI/2, 0, Math.PI*2);
+    ctx.ellipse(0, p.r*0.3, p.r*0.9, p.r*0.45, 0, 0, Math.PI*2);
     ctx.fill();
+  } else {
+    ctx.font = `${p.r*2.1}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowBlur = 10;
+    ctx.fillText('🥬', 0, 0);
   }
   ctx.restore();
 }
 
-function draw(){
-  ctx.clearRect(0, 0, W, H);
-  plants.forEach(p => {
-    if(!p.pulled){
-      drawSpinach(p.x, p.y + p.offsetY, p.size);
-    }
-  });
-  requestAnimationFrame(draw);
+function drawGuideRing(p){
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.r*1.6, 0, Math.PI*2);
+  ctx.strokeStyle = `rgba(120,255,150,${0.5 + 0.3*Math.sin(Date.now()/300)})`;
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8,8]);
+  ctx.stroke();
+  ctx.restore();
 }
 
-document.querySelectorAll('.choiceBtn').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    if(answered) return;
-    const val = e.target.getAttribute('data-val');
-    if(val === '3'){
-      answered = true;
-      clearText.innerHTML = 'せいかい！<br>ほうれんそうは 1ねんに 3かいもしゅうかくできるんだよ！';
-      clearScreen.classList.add('show');
-    } else {
-      e.target.classList.add('wrong');
-      setTimeout(() => e.target.classList.remove('wrong'), 800);
-    }
-  });
-});
+function loop(){
+  if (!loopRunning) return;
+  ctx.clearRect(0,0,W,H);
+  for (const p of plants){
+    if (!p.pulled && phase === 'pulling') drawGuideRing(p);
+    drawPlant(p);
+  }
+  requestAnimationFrame(loop);
+}
 
-// マーカー検出処理
+// ---- マーカー検出イベント ----
 targetEntity.addEventListener('targetFound', () => {
   searchHint.style.display = 'none';
-  if(!gameStarted){
+  if (!gameStarted){
     gameStarted = true;
     resize();
     gameLayer.style.display = 'block';
     questionBox.style.display = 'block';
     hint.style.display = 'block';
-    requestAnimationFrame(draw);
+    loopRunning = true;
+    requestAnimationFrame(loop);
   }
 });
-
 targetEntity.addEventListener('targetLost', () => {
-  if(!gameStarted) searchHint.style.display = 'block';
-});
-
-// MindARの読み込みエラー検知
-const sceneEl = document.querySelector('a-scene');
-sceneEl.addEventListener('arError', (event) => {
-  searchMsg.textContent = 'エラー: hourenso.mind が読み込めません';
-  searchMsg.style.color = '#ff8a8a';
+  // 一度見つけたらゲームは継続表示（マーカーを外しても遊べるように）
+  if (!gameStarted) searchHint.style.display = 'block';
 });
 </script>
 </body>
