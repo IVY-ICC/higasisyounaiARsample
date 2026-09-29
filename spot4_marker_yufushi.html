@@ -114,7 +114,7 @@
 </div>
 
 <div id="hint">
-  <div class="badge" id="hintText">ゆふ岳と おなじ かたちを さがそう</div>
+  <div class="badge" id="hintText">ゆふ岳の やまがたを さがそう(やまが 2つ あるよ)</div>
 </div>
 
 <div id="clearScreen">
@@ -177,10 +177,11 @@ function layoutShapes(){
 
   const usedPositions = positions.slice(0, 12);
 
+  // 正解の3つは「由布岳(双耳峰)」の形にする（決めの図形なので見た目で区別できる）
   for (let i=0;i<3;i++){
     const pos = usedPositions.pop();
     shapes.push({
-      type:'triangle', x:pos.x, y:pos.y, size,
+      type:'yufudake', x:pos.x, y:pos.y, size,
       char: TARGET_WORD[i], isTarget:true, targetIndex:i, collected:false
     });
   }
@@ -215,10 +216,10 @@ function handleTap(x, y){
         }
       } else if (s.type === 'triangle' && !s.isTarget){
         s.flash = 20;
-        hintText.textContent = 'かたちは あってるかも。ほかも さがしてみよう';
+        hintText.textContent = 'それは やまが 1つの かたちだね。2つの やまを さがそう';
       } else {
         s.flash = 12;
-        hintText.textContent = 'その かたちじゃ なさそう…ゆふ岳を おもいだして';
+        hintText.textContent = 'それは やまの かたちじゃ なさそう';
       }
       return;
     }
@@ -237,10 +238,24 @@ function drawShape(s){
   if (s.flash && s.flash > 0){ fillColor = 'rgba(255,120,120,0.85)'; s.flash--; }
 
   ctx.fillStyle = fillColor;
+  ctx.strokeStyle = 'rgba(90,60,30,0.9)';
+  ctx.lineWidth = 3;
   ctx.shadowColor = 'rgba(0,0,0,0.35)';
   ctx.shadowBlur = 8;
 
-  if (s.type === 'triangle'){
+  if (s.isTarget){
+    // ゆふ岳の双耳峰（山頂が2つ、真ん中がへこんだ形）
+    const sz = s.size;
+    ctx.beginPath();
+    ctx.moveTo(-sz*0.9, sz*0.7);
+    ctx.lineTo(-sz*0.35, -sz);
+    ctx.lineTo(0, -sz*0.4);
+    ctx.lineTo(sz*0.35, -sz);
+    ctx.lineTo(sz*0.9, sz*0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (s.type === 'triangle'){
     ctx.beginPath();
     ctx.moveTo(0, -s.size);
     ctx.lineTo(s.size*0.9, s.size*0.7);
@@ -261,7 +276,7 @@ function drawShape(s){
     ctx.font = `bold ${s.size*0.85}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(s.char, 0, s.type==='triangle' ? s.size*0.05 : 0);
+    ctx.fillText(s.char, 0, s.isTarget ? s.size*0.35 : (s.type==='triangle' ? s.size*0.05 : 0));
   }
 
   ctx.restore();
