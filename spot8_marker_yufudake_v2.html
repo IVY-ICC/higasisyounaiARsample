@@ -110,7 +110,6 @@
   <div class="badge">印刷したマーカーに カメラを むけてね</div>
 </div>
 
-<!-- ★ imageTargetSrc は実際の.mindファイル名に書き換えてください -->
 <a-scene
   mindar-image="imageTargetSrc: ./yufudake_v2.mind; autoStart: true; uiScanning: no;"
   color-space="sRGB"
@@ -170,7 +169,7 @@ let answered = false;
 let gameStarted = false;
 let loopRunning = false;
 
-const LAYER_COUNT = 6;
+const BASE_LAYERS = 3; // 裾野の共通層
 let layers = [];
 
 function resize(){
@@ -183,19 +182,45 @@ window.addEventListener('resize', resize);
 function buildLayers(){
   layers = [];
   const baseCx = W * 0.5;
-  const baseCy = H * 0.58;
-  const baseRx = Math.min(W, H) * 0.32;
-  const baseRy = baseRx * 0.55;
-  const colors = ['#3f8f4f', '#5fa85f', '#8cb35a', '#b3924a', '#8f6a4a', '#f4f4f4'];
+  const baseCy = H * 0.60;
+  const baseRx = Math.min(W, H) * 0.35;
+  const baseRy = baseRx * 0.52;
+  const colors = ['#3f8f4f', '#5fa85f', '#8cb35a', '#b3924a', '#a67c52', '#8f6a4a'];
 
-  for (let i=0; i<LAYER_COUNT; i++){
-    const t = i / (LAYER_COUNT - 1);
-    const scale = 1 - t * 0.78;
-    const liftY = t * baseRy * 2.1;
+  // 1〜3層目：山裾（大きな1つの等高線）
+  for (let i = 0; i < BASE_LAYERS; i++){
+    const t = i / 5;
+    const scale = 1 - t * 0.5;
+    const liftY = t * baseRy * 1.8;
     layers.push({
+      type: 'base',
       cx: baseCx, cy: baseCy - liftY,
       rx: baseRx * scale, ry: baseRy * scale,
-      color: colors[i], revealAt: i / LAYER_COUNT, seed: i * 12.9898
+      color: colors[i], revealAt: i / 6, seed: i * 12.9898
+    });
+  }
+
+  // 4〜6層目：西峰と東峰（2つのピークに分裂）
+  const peakOffset = baseRx * 0.28;
+  for (let i = BASE_LAYERS; i < 6; i++){
+    const t = i / 5;
+    const scale = (1 - t * 0.65) * 0.55;
+    const liftY = t * baseRy * 2.2;
+    
+    // 西峰 (左側・1583m) - わずかに高く(liftY + 8px)
+    layers.push({
+      type: 'peak', label: '西峰',
+      cx: baseCx - peakOffset, cy: (baseCy - liftY) - 8,
+      rx: baseRx * scale, ry: baseRy * scale,
+      color: colors[i], revealAt: i / 6, seed: i * 15.123
+    });
+
+    // 東峰 (右側・1580m)
+    layers.push({
+      type: 'peak', label: '東峰',
+      cx: baseCx + peakOffset, cy: baseCy - liftY,
+      rx: baseRx * scale * 0.95, ry: baseRy * scale * 0.95,
+      color: colors[i], revealAt: i / 6, seed: i * 27.456
     });
   }
 }
@@ -223,7 +248,7 @@ function onDragMove(y){
   const delta = lastY - y;
   lastY = y;
   if (delta > 0){
-    progress = Math.min(1, progress + delta / (H * 0.9));
+    progress = Math.min(1, progress + delta / (H * 0.85));
     updateProgressUI();
     if (progress >= 1){
       phase = 'quiz';
@@ -245,7 +270,7 @@ window.addEventListener('mouseup', onDragEnd);
 function updateProgressUI(){
   progressBarFill.style.width = Math.round(progress*100) + '%';
   if (progress < 0.3) hintText.textContent = 'がめんを うえに なぞろう';
-  else if (progress < 0.7) hintText.textContent = 'やまが たかく なってきた!';
+  else if (progress < 0.7) hintText.textContent = 'みねが 2つに わかれてきた!';
   else if (progress < 1) hintText.textContent = 'あと すこし!';
 }
 
@@ -271,20 +296,33 @@ choicesBox.addEventListener('click', (e)=>{
 function loop(){
   if (!loopRunning) return;
   ctx.clearRect(0,0,W,H);
+  
   layers.forEach((layer)=>{
-    const localT = (progress - layer.revealAt) / (1/LAYER_COUNT);
+    const localT = (progress - layer.revealAt) / (1/6);
     const clamped = Math.max(0, Math.min(1, localT));
     if (clamped <= 0) return;
+    
     ctx.save();
     ctx.globalAlpha = clamped;
     ctx.fillStyle = layer.color;
     ctx.strokeStyle = 'rgba(0,0,0,0.25)';
     ctx.lineWidth = 2;
-    drawContourShape(layer, (1-clamped) * 40);
+    drawContourShape(layer, (1-clamped) * 35);
     ctx.fill();
     ctx.stroke();
+
+    // 頂点付近で峰のラベルを表示
+    if (progress >= 0.85 && layer.revealAt >= 0.8) {
+      ctx.fillStyle = '#222';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      const labelY = layer.cy - 12;
+      ctx.fillText(layer.label, layer.cx, labelY);
+    }
+    
     ctx.restore();
   });
+
   requestAnimationFrame(loop);
 }
 
