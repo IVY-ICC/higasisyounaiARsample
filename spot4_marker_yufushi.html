@@ -200,7 +200,7 @@ function handleTap(x, y){
     if (s.collected) continue;
     const dist = Math.hypot(x-s.x, y-s.y);
     if (dist < s.size * 1.5){
-      if (s.type === 'triangle' && s.isTarget){
+      if (s.isTarget){
         s.collected = true;
         collectedCount++;
         const slot = document.getElementById('slot'+s.targetIndex);
